@@ -1,6 +1,6 @@
 {
     "version": "1.21.0",
-    "name": "@hcvp/pocketbase-js",
+    "name": "@crisvp/pocketbase-js",
     "description": "PocketBase JavaScript SDK",
     "author": "H.C. van Pelt",
     "license": "MIT",
@@ -35,6 +35,13 @@
         "printWidth": 120,
         "bracketSameLine": true
     },
+    "browserslist": [
+        "defaults and fully supports es6-module",
+        "maintained node versions",
+        "last 2 versions",
+        "not dead",
+        "> 0.2%"
+    ],
     "devDependencies": {
         "@types/node": "^20.14.2",
         "browserslist-to-esbuild": "^2.1.1",
