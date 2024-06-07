@@ -1,5 +1,12 @@
 ## 0.21.3
 
+## 1.21.2
+
+### Patch Changes
+
+-   add browerslist and changeset
+-   move vite to dev dependency
+
 ## 1.21.1
 
 ### Patch Changes
@@ -7,6 +14,7 @@
 -   add browerslist and changeset
 
 ## 0.21.3
+
 -   Enforce temporary the `atob` polyfill for ReactNative until [Expo 51+ and React Native v0.74+ `atob` fix get released](https://github.com/reactwg/react-native-releases/issues/287).
 
 ## 0.21.2
