@@ -1,6 +1,6 @@
 {
     "version": "1.21.0",
-    "name": "pocketbase-js",
+    "name": "@hcvp/pocketbase-js",
     "description": "PocketBase JavaScript SDK",
     "author": "H.C. van Pelt",
     "license": "MIT",
