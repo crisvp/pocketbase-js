@@ -12,3 +12,7 @@ package-lock.json
 README.html
 CHANGELOG.html
 LICENSE.html
+
+dist
+build
+*.sw?
