@@ -14,8 +14,8 @@
     "baseUrl": ".",
     "outDir": "./build",
     "paths": {
-      "@/*": ["./src/*"],
+      "@/*": ["../src/*"],
     },
   },
-  "include": ["./src"],
+  "include": ["**/*.ts"],
 }

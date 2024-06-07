@@ -1,5 +1,3 @@
-import Client from "@/Client";
-
 export * from "@/Client";
 export * from "@/ClientResponseError";
 export * from "@/services/AdminService";
@@ -16,5 +14,3 @@ export * from "@/stores/BaseAuthStore";
 export * from "@/stores/LocalAuthStore";
 export * from "@/stores/utils/cookie";
 export * from "@/stores/utils/jwt";
-
-export default Client;
