@@ -9,11 +9,13 @@
         "url": "git://github.com/crisvp/pocketbase-js.git"
     },
     "exports": {
-        "index.js": "./dist/pocketbase-js.js",
-        "umd": "./dist/pocketbase-js.umd.js",
-        "iife": "./dist/pocketbase-js.iife.js"
+        ".": {
+            "import": "./dist/pocketbase-js.mjs",
+            "require": "./dist/pocketbase-js.js",
+            "types": "./dist/pocketbase-js.d.ts"
+        }
     },
-    "module": "./dist/pocketbase-js.es.js",
+    "module": "./dist/pocketbase-js.mjs",
     "types": "./dist/pocketbase-js.d.ts",
     "keywords": [
         "pocketbase",
