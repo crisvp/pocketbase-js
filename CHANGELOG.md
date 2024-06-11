@@ -1,5 +1,13 @@
 ## 0.21.3
 
+## 1.21.3
+
+### Patch Changes
+
+-   871d6f9: Fix exports and remove dist
+-   07ef5c5: Add eslint
+-   98713ba: Fix module imports/exports
+
 ## 1.21.2
 
 ### Patch Changes
@@ -107,7 +115,10 @@
     ```js
     const record = await pb.collection("example").getList(1, 20, {
         // the same as: "title ~ 'te\\'st' && (totalA = 123 || totalB = 123)"
-        filter: pb.filter("title ~ {:title} && (totalA = {:num} || totalB = {:num})", { title: "te'st", num: 123 }),
+        filter: pb.filter(
+            "title ~ {:title} && (totalA = {:num} || totalB = {:num})",
+            { title: "te'st", num: 123 },
+        ),
     });
     ```
 

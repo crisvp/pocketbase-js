@@ -16,3 +16,4 @@ LICENSE.html
 dist
 build
 *.sw?
+*.timestamp*
