@@ -27,7 +27,7 @@
     "scripts": {
         "build": "vite build",
         "compile": "tsc -p .",
-        "test": "vitest"
+        "test": "vitest run"
     },
     "prettier": {
         "editorconfig": true,
