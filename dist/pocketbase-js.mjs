@@ -1,16 +1,16 @@
-var L = Object.defineProperty;
-var _ = (c, n, e) => n in c ? L(c, n, { enumerable: !0, configurable: !0, writable: !0, value: e }) : c[n] = e;
-var u = (c, n, e) => (_(c, typeof n != "symbol" ? n + "" : n, e), e);
-class m extends Error {
+var U = Object.defineProperty;
+var _ = (c, i, e) => i in c ? U(c, i, { enumerable: !0, configurable: !0, writable: !0, value: e }) : c[i] = e;
+var l = (c, i, e) => (_(c, typeof i != "symbol" ? i + "" : i, e), e);
+class f extends Error {
   constructor(e) {
-    var t, i, s, r;
+    var t, s, n, r;
     super("ClientResponseError");
-    u(this, "url", "");
-    u(this, "status", 0);
-    u(this, "response", {});
-    u(this, "isAbort", !1);
-    u(this, "originalError", null);
-    Object.setPrototypeOf(this, m.prototype), e !== null && typeof e == "object" && (this.url = typeof e.url == "string" ? e.url : "", this.status = typeof e.status == "number" ? e.status : 0, this.isAbort = !!e.isAbort, this.originalError = e.originalError, e.response !== null && typeof e.response == "object" ? this.response = e.response : e.data !== null && typeof e.data == "object" ? this.response = e.data : this.response = {}), !this.originalError && !(e instanceof m) && (this.originalError = e), typeof DOMException < "u" && e instanceof DOMException && (this.isAbort = !0), this.name = "ClientResponseError " + this.status, this.message = (t = this.response) == null ? void 0 : t.message, this.message || (this.isAbort ? this.message = "The request was autocancelled. You can find more info in https://github.com/pocketbase/js-sdk#auto-cancellation." : (r = (s = (i = this.originalError) == null ? void 0 : i.cause) == null ? void 0 : s.message) != null && r.includes("ECONNREFUSED ::1") ? this.message = "Failed to connect to the PocketBase server. Try changing the SDK URL from localhost to 127.0.0.1 (https://github.com/pocketbase/js-sdk/issues/21)." : this.message = "Something went wrong while processing your request.");
+    l(this, "url", "");
+    l(this, "status", 0);
+    l(this, "response", {});
+    l(this, "isAbort", !1);
+    l(this, "originalError", null);
+    Object.setPrototypeOf(this, f.prototype), e !== null && typeof e == "object" && (this.url = typeof e.url == "string" ? e.url : "", this.status = typeof e.status == "number" ? e.status : 0, this.isAbort = !!e.isAbort, this.originalError = e.originalError, e.response !== null && typeof e.response == "object" ? this.response = e.response : e.data !== null && typeof e.data == "object" ? this.response = e.data : this.response = {}), !this.originalError && !(e instanceof f) && (this.originalError = e), typeof DOMException < "u" && e instanceof DOMException && (this.isAbort = !0), this.name = "ClientResponseError " + this.status, this.message = (t = this.response) == null ? void 0 : t.message, this.message || (this.isAbort ? this.message = "The request was autocancelled. You can find more info in https://github.com/pocketbase/js-sdk#auto-cancellation." : (r = (n = (s = this.originalError) == null ? void 0 : s.cause) == null ? void 0 : n.message) != null && r.includes("ECONNREFUSED ::1") ? this.message = "Failed to connect to the PocketBase server. Try changing the SDK URL from localhost to 127.0.0.1 (https://github.com/pocketbase/js-sdk/issues/21)." : this.message = "Something went wrong while processing your request.");
   }
   /**
    * Alias for `this.response` to preserve the backward compatibility.
@@ -26,46 +26,46 @@ class m extends Error {
     return { ...this };
   }
 }
-const S = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
-function j(c, n) {
+const C = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
+function F(c, i) {
   const e = {};
   if (typeof c != "string")
     return e;
-  const i = Object.assign({}, n || {}).decode || N;
-  let s = 0;
-  for (; s < c.length; ) {
-    const r = c.indexOf("=", s);
+  const s = Object.assign({}, i || {}).decode || N;
+  let n = 0;
+  for (; n < c.length; ) {
+    const r = c.indexOf("=", n);
     if (r === -1)
       break;
-    let o = c.indexOf(";", s);
+    let o = c.indexOf(";", n);
     if (o === -1)
       o = c.length;
     else if (o < r) {
-      s = c.lastIndexOf(";", r - 1) + 1;
+      n = c.lastIndexOf(";", r - 1) + 1;
       continue;
     }
-    const h = c.slice(s, r).trim();
-    if (e[h] === void 0) {
-      let a = c.slice(r + 1, o).trim();
-      a.charCodeAt(0) === 34 && (a = a.slice(1, -1));
+    const a = c.slice(n, r).trim();
+    if (e[a] === void 0) {
+      let h = c.slice(r + 1, o).trim();
+      h.charCodeAt(0) === 34 && (h = h.slice(1, -1));
       try {
-        e[h] = i(a);
+        e[a] = s(h);
       } catch {
-        e[h] = a;
+        e[a] = h;
       }
     }
-    s = o + 1;
+    n = o + 1;
   }
   return e;
 }
-function k(c, n, e) {
-  const t = Object.assign({}, e || {}), i = t.encode || U;
-  if (!S.test(c))
+function v(c, i, e) {
+  const t = Object.assign({}, e || {}), s = t.encode || K;
+  if (!C.test(c))
     throw new TypeError("argument name is invalid");
-  const s = i(n);
-  if (s && !S.test(s))
+  const n = s(i);
+  if (n && !C.test(n))
     throw new TypeError("argument val is invalid");
-  let r = c + "=" + s;
+  let r = c + "=" + n;
   if (t.maxAge != null) {
     const o = t.maxAge - 0;
     if (isNaN(o) || !isFinite(o))
@@ -73,17 +73,17 @@ function k(c, n, e) {
     r += "; Max-Age=" + Math.floor(o);
   }
   if (t.domain) {
-    if (!S.test(t.domain))
+    if (!C.test(t.domain))
       throw new TypeError("option domain is invalid");
     r += "; Domain=" + t.domain;
   }
   if (t.path) {
-    if (!S.test(t.path))
+    if (!C.test(t.path))
       throw new TypeError("option path is invalid");
     r += "; Path=" + t.path;
   }
   if (t.expires) {
-    if (!F(t.expires) || isNaN(t.expires.valueOf()))
+    if (!W(t.expires) || isNaN(t.expires.valueOf()))
       throw new TypeError("option expires is invalid");
     r += "; Expires=" + t.expires.toUTCString();
   }
@@ -123,56 +123,56 @@ function k(c, n, e) {
 function N(c) {
   return c.indexOf("%") !== -1 ? decodeURIComponent(c) : c;
 }
-function U(c) {
+function K(c) {
   return encodeURIComponent(c);
 }
-function F(c) {
+function W(c) {
   return Object.prototype.toString.call(c) === "[object Date]" || c instanceof Date;
 }
-const K = typeof navigator < "u" && navigator.product === "ReactNative" || typeof global < "u" && global.HermesInternal;
-let v;
-typeof atob == "function" && !K ? v = atob : v = (c) => {
-  const n = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+const B = typeof navigator < "u" && navigator.product === "ReactNative" || typeof global < "u" && global.HermesInternal;
+let k;
+typeof atob == "function" && !B ? k = atob : k = (c) => {
+  const i = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
   let e = String(c).replace(/=+$/, "");
   if (e.length % 4 == 1)
     throw new Error(
       "'atob' failed: The string to be decoded is not correctly encoded."
     );
   for (
-    var t = 0, i, s, r = 0, o = "";
+    var t = 0, s, n, r = 0, o = "";
     // get next character
-    s = e.charAt(r++);
+    n = e.charAt(r++);
     // character found in table? initialize bit storage and add its ascii value;
-    ~s && (i = t % 4 ? i * 64 + s : s, // and if not first of each 4 characters,
+    ~n && (s = t % 4 ? s * 64 + n : n, // and if not first of each 4 characters,
     // convert the first 8 bits to one ascii character
-    t++ % 4) ? o += String.fromCharCode(255 & i >> (-2 * t & 6)) : 0
+    t++ % 4) ? o += String.fromCharCode(255 & s >> (-2 * t & 6)) : 0
   )
-    s = n.indexOf(s);
+    n = i.indexOf(n);
   return o;
 };
-function g(c) {
+function w(c) {
   if (c)
     try {
-      const n = decodeURIComponent(
-        v(c.split(".")[1]).split("").map(function(e) {
+      const i = decodeURIComponent(
+        k(c.split(".")[1]).split("").map(function(e) {
           return "%" + ("00" + e.charCodeAt(0).toString(16)).slice(-2);
         }).join("")
       );
-      return JSON.parse(n) || {};
+      return JSON.parse(i) || {};
     } catch {
     }
   return {};
 }
-function I(c, n = 0) {
-  let e = g(c);
-  return !(Object.keys(e).length > 0 && (!e.exp || e.exp - n > Date.now() / 1e3));
+function E(c, i = 0) {
+  let e = w(c);
+  return !(Object.keys(e).length > 0 && (!e.exp || e.exp - i > Date.now() / 1e3));
 }
-const O = "pb_auth";
+const P = "pb_auth";
 class R {
   constructor() {
-    u(this, "baseToken", "");
-    u(this, "baseModel", null);
-    u(this, "_onChangeCallbacks", []);
+    l(this, "baseToken", "");
+    l(this, "baseModel", null);
+    l(this, "_onChangeCallbacks", []);
   }
   /**
    * Retrieves the stored token (if any).
@@ -190,25 +190,25 @@ class R {
    * Loosely checks if the store has valid token (aka. existing and unexpired exp claim).
    */
   get isValid() {
-    return !I(this.token);
+    return !E(this.token);
   }
   /**
    * Checks whether the current store state is for admin authentication.
    */
   get isAdmin() {
-    return g(this.token).type === "admin";
+    return w(this.token).type === "admin";
   }
   /**
    * Checks whether the current store state is for auth record authentication.
    */
   get isAuthRecord() {
-    return g(this.token).type === "authRecord";
+    return w(this.token).type === "authRecord";
   }
   /**
    * Saves the provided new token and model data in the auth store.
    */
-  save(n, e) {
-    this.baseToken = n || "", this.baseModel = e || null, this.triggerChange();
+  save(i, e) {
+    this.baseToken = i || "", this.baseModel = e || null, this.triggerChange();
   }
   /**
    * Removes the stored token and model data form the auth store.
@@ -240,14 +240,14 @@ class R {
    * }
    * ```
    */
-  loadFromCookie(n, e = O) {
-    const t = j(n || "")[e] || "";
-    let i = {};
+  loadFromCookie(i, e = P) {
+    const t = F(i || "")[e] || "";
+    let s = {};
     try {
-      i = JSON.parse(t), (typeof i === null || typeof i != "object" || Array.isArray(i)) && (i = {});
+      s = JSON.parse(t), (typeof s === null || typeof s != "object" || Array.isArray(s)) && (s = {});
     } catch {
     }
-    this.save(i.token || "", i.model || null);
+    this.save(s.token || "", s.model || null);
   }
   /**
    * Exports the current store state as cookie string.
@@ -263,27 +263,27 @@ class R {
    * strip the model data to the bare minimum to try to fit within the
    * recommended size in https://www.rfc-editor.org/rfc/rfc6265#section-6.1.
    */
-  exportToCookie(n, e = O) {
-    var h, a;
+  exportToCookie(i, e = P) {
+    var a, h;
     const t = {
       secure: !0,
       sameSite: !0,
       httpOnly: !0,
       path: "/"
-    }, i = g(this.token);
-    i != null && i.exp ? t.expires = new Date(i.exp * 1e3) : t.expires = /* @__PURE__ */ new Date("1970-01-01"), n = Object.assign({}, t, n);
-    const s = {
+    }, s = w(this.token);
+    s != null && s.exp ? t.expires = new Date(s.exp * 1e3) : t.expires = /* @__PURE__ */ new Date("1970-01-01"), i = Object.assign({}, t, i);
+    const n = {
       token: this.token,
       model: this.model ? JSON.parse(JSON.stringify(this.model)) : null
     };
-    let r = k(e, JSON.stringify(s), n);
+    let r = v(e, JSON.stringify(n), i);
     const o = typeof Blob < "u" ? new Blob([r]).size : r.length;
-    if (s.model && o > 4096) {
-      s.model = { id: (h = s == null ? void 0 : s.model) == null ? void 0 : h.id, email: (a = s == null ? void 0 : s.model) == null ? void 0 : a.email };
-      const l = ["collectionId", "username", "verified"];
-      for (const f in this.model)
-        l.includes(f) && (s.model[f] = this.model[f]);
-      r = k(e, JSON.stringify(s), n);
+    if (n.model && o > 4096) {
+      n.model = { id: (a = n == null ? void 0 : n.model) == null ? void 0 : a.id, email: (h = n == null ? void 0 : n.model) == null ? void 0 : h.email };
+      const u = ["collectionId", "username", "verified"];
+      for (const m in this.model)
+        u.includes(m) && (n.model[m] = this.model[m]);
+      r = v(e, JSON.stringify(n), i);
     }
     return r;
   }
@@ -295,25 +295,25 @@ class R {
    *
    * Returns a removal function that you could call to "unsubscribe" from the changes.
    */
-  onChange(n, e = !1) {
-    return this._onChangeCallbacks.push(n), e && n(this.token, this.model), () => {
+  onChange(i, e = !1) {
+    return this._onChangeCallbacks.push(i), e && i(this.token, this.model), () => {
       for (let t = this._onChangeCallbacks.length - 1; t >= 0; t--)
-        if (this._onChangeCallbacks[t] == n) {
+        if (this._onChangeCallbacks[t] == i) {
           delete this._onChangeCallbacks[t], this._onChangeCallbacks.splice(t, 1);
           return;
         }
     };
   }
   triggerChange() {
-    for (const n of this._onChangeCallbacks)
-      n && n(this.token, this.model);
+    for (const i of this._onChangeCallbacks)
+      i && i(this.token, this.model);
   }
 }
-class H extends R {
+class $ extends R {
   constructor(e = "pocketbase_auth") {
     super();
-    u(this, "storageFallback", {});
-    u(this, "storageKey");
+    l(this, "storageFallback", {});
+    l(this, "storageKey");
     this.storageKey = e, this._bindStorageEvent();
   }
   /**
@@ -367,8 +367,8 @@ class H extends R {
    */
   _storageSet(e, t) {
     if (typeof window < "u" && (window != null && window.localStorage)) {
-      let i = t;
-      typeof t != "string" && (i = JSON.stringify(t)), window.localStorage.setItem(e, i);
+      let s = t;
+      typeof t != "string" && (s = JSON.stringify(t)), window.localStorage.setItem(e, s);
     } else
       this.storageFallback[e] = t;
   }
@@ -391,23 +391,112 @@ class H extends R {
     });
   }
 }
-class C {
-  constructor(n) {
-    u(this, "client");
-    this.client = n;
+class p {
+  constructor(i) {
+    l(this, "client");
+    this.client = i;
   }
 }
-class T extends C {
+class H extends p {
+  /**
+   * Fetch all available app settings.
+   *
+   * @throws {ClientResponseError}
+   */
+  async getAll(i) {
+    return i = Object.assign(
+      {
+        method: "GET"
+      },
+      i
+    ), this.client.send("/api/settings", i);
+  }
+  /**
+   * Bulk updates app settings.
+   *
+   * @throws {ClientResponseError}
+   */
+  async update(i, e) {
+    return e = Object.assign(
+      {
+        method: "PATCH",
+        body: i
+      },
+      e
+    ), this.client.send("/api/settings", e);
+  }
+  /**
+   * Performs a S3 filesystem connection test.
+   *
+   * The currently supported `filesystem` are "storage" and "backups".
+   *
+   * @throws {ClientResponseError}
+   */
+  async testS3(i = "storage", e) {
+    return e = Object.assign(
+      {
+        method: "POST",
+        body: {
+          filesystem: i
+        }
+      },
+      e
+    ), this.client.send("/api/settings/test/s3", e).then(() => !0);
+  }
+  /**
+   * Sends a test email.
+   *
+   * The possible `emailTemplate` values are:
+   * - verification
+   * - password-reset
+   * - email-change
+   *
+   * @throws {ClientResponseError}
+   */
+  async testEmail(i, e, t) {
+    return t = Object.assign(
+      {
+        method: "POST",
+        body: {
+          email: i,
+          template: e
+        }
+      },
+      t
+    ), this.client.send("/api/settings/test/email", t).then(() => !0);
+  }
+  /**
+   * Generates a new Apple OAuth2 client secret.
+   *
+   * @throws {ClientResponseError}
+   */
+  async generateAppleClientSecret(i, e, t, s, n, r) {
+    return r = Object.assign(
+      {
+        method: "POST",
+        body: {
+          clientId: i,
+          teamId: e,
+          keyId: t,
+          privateKey: s,
+          duration: n
+        }
+      },
+      r
+    ), this.client.send("/api/settings/apple/generate-client-secret", r);
+  }
+}
+class T extends p {
   /**
    * Response data decoder.
    */
-  decode(n) {
-    return n;
+  decode(i) {
+    return i;
   }
-  async getFullList(n, e) {
-    if (typeof n == "number")
-      return this._getFullList(n, e);
-    e = Object.assign({}, n, e);
+  async getFullList(i, e) {
+    if (typeof i == "number")
+      return this._getFullList(i, e);
+    e = Object.assign({}, i, e);
     let t = 500;
     return e.batch && (t = e.batch, delete e.batch), this._getFullList(t, e);
   }
@@ -418,7 +507,7 @@ class T extends C {
    *
    * @throws {ClientResponseError}
    */
-  async getList(n = 1, e = 30, t) {
+  async getList(i = 1, e = 30, t) {
     return t = Object.assign(
       {
         method: "GET"
@@ -426,13 +515,13 @@ class T extends C {
       t
     ), t.query = Object.assign(
       {
-        page: n,
+        page: i,
         perPage: e
       },
       t.query
-    ), this.client.send(this.baseCrudPath, t).then((i) => {
-      var s;
-      return i.items = ((s = i.items) == null ? void 0 : s.map((r) => this.decode(r))) || [], i;
+    ), this.client.send(this.baseCrudPath, t).then((s) => {
+      var n;
+      return s.items = ((n = s.items) == null ? void 0 : n.map((r) => this.decode(r))) || [], s;
     });
   }
   /**
@@ -448,22 +537,22 @@ class T extends C {
    *
    * @throws {ClientResponseError}
    */
-  async getFirstListItem(n, e) {
+  async getFirstListItem(i, e) {
     return e = Object.assign(
       {
-        requestKey: "one_by_filter_" + this.baseCrudPath + "_" + n
+        requestKey: "one_by_filter_" + this.baseCrudPath + "_" + i
       },
       e
     ), e.query = Object.assign(
       {
-        filter: n,
+        filter: i,
         skipTotal: 1
       },
       e.query
     ), this.getList(1, 1, e).then((t) => {
-      var i;
-      if (!((i = t == null ? void 0 : t.items) != null && i.length))
-        throw new m({
+      var s;
+      if (!((s = t == null ? void 0 : t.items) != null && s.length))
+        throw new f({
           status: 404,
           response: {
             code: 404,
@@ -483,9 +572,9 @@ class T extends C {
    *
    * @throws {ClientResponseError}
    */
-  async getOne(n, e) {
-    if (!n)
-      throw new m({
+  async getOne(i, e) {
+    if (!i)
+      throw new f({
         url: this.client.buildUrl(this.baseCrudPath + "/"),
         status: 404,
         response: {
@@ -499,7 +588,7 @@ class T extends C {
         method: "GET"
       },
       e
-    ), this.client.send(this.baseCrudPath + "/" + encodeURIComponent(n), e).then((t) => this.decode(t));
+    ), this.client.send(this.baseCrudPath + "/" + encodeURIComponent(i), e).then((t) => this.decode(t));
   }
   /**
    * Creates a new item.
@@ -508,11 +597,11 @@ class T extends C {
    *
    * @throws {ClientResponseError}
    */
-  async create(n, e) {
+  async create(i, e) {
     return e = Object.assign(
       {
         method: "POST",
-        body: n
+        body: i
       },
       e
     ), this.client.send(this.baseCrudPath, e).then((t) => this.decode(t));
@@ -524,89 +613,89 @@ class T extends C {
    *
    * @throws {ClientResponseError}
    */
-  async update(n, e, t) {
+  async update(i, e, t) {
     return t = Object.assign(
       {
         method: "PATCH",
         body: e
       },
       t
-    ), this.client.send(this.baseCrudPath + "/" + encodeURIComponent(n), t).then((i) => this.decode(i));
+    ), this.client.send(this.baseCrudPath + "/" + encodeURIComponent(i), t).then((s) => this.decode(s));
   }
   /**
    * Deletes an existing item by its id.
    *
    * @throws {ClientResponseError}
    */
-  async delete(n, e) {
+  async delete(i, e) {
     return e = Object.assign(
       {
         method: "DELETE"
       },
       e
-    ), this.client.send(this.baseCrudPath + "/" + encodeURIComponent(n), e).then(() => !0);
+    ), this.client.send(this.baseCrudPath + "/" + encodeURIComponent(i), e).then(() => !0);
   }
   /**
    * Returns a promise with all list items batch fetched at once.
    */
-  _getFullList(n = 500, e) {
+  _getFullList(i = 500, e) {
     e = e || {}, e.query = Object.assign(
       {
         skipTotal: 1
       },
       e.query
     );
-    let t = [], i = async (s) => this.getList(s, n || 500, e).then((r) => {
-      const h = r.items;
-      return t = t.concat(h), h.length == r.perPage ? i(s + 1) : t;
+    let t = [], s = async (n) => this.getList(n, i || 500, e).then((r) => {
+      const a = r.items;
+      return t = t.concat(a), a.length == r.perPage ? s(n + 1) : t;
     });
-    return i(1);
+    return s(1);
   }
 }
-function d(c, n, e, t) {
-  const i = typeof e < "u", s = typeof t < "u";
-  return !s && !i ? n : s ? (console.warn(c), n.body = Object.assign({}, n.body, e), n.query = Object.assign({}, n.query, t), n) : Object.assign(n, e);
+function d(c, i, e, t) {
+  const s = typeof e < "u", n = typeof t < "u";
+  return !n && !s ? i : n ? (console.warn(c), i.body = Object.assign({}, i.body, e), i.query = Object.assign({}, i.query, t), i) : Object.assign(i, e);
 }
-function P(c) {
-  var n;
-  (n = c._resetAutoRefresh) == null || n.call(c);
+function O(c) {
+  var i;
+  (i = c._resetAutoRefresh) == null || i.call(c);
 }
-function W(c, n, e, t) {
-  P(c);
-  const i = c.beforeSend, s = c.authStore.model, r = c.authStore.onChange((o, h) => {
-    (!o || (h == null ? void 0 : h.id) != (s == null ? void 0 : s.id) || // check the collection id in case an admin and auth record share the same id
-    (h != null && h.collectionId || s != null && s.collectionId) && (h == null ? void 0 : h.collectionId) != (s == null ? void 0 : s.collectionId)) && P(c);
+function J(c, i, e, t) {
+  O(c);
+  const s = c.beforeSend, n = c.authStore.model, r = c.authStore.onChange((o, a) => {
+    (!o || (a == null ? void 0 : a.id) != (n == null ? void 0 : n.id) || // check the collection id in case an admin and auth record share the same id
+    (a != null && a.collectionId || n != null && n.collectionId) && (a == null ? void 0 : a.collectionId) != (n == null ? void 0 : n.collectionId)) && O(c);
   });
   c._resetAutoRefresh = function() {
-    r(), c.beforeSend = i, delete c._resetAutoRefresh;
-  }, c.beforeSend = async (o, h) => {
-    var w;
-    const a = c.authStore.token;
-    if ((w = h.query) != null && w.autoRefresh)
-      return i ? i(o, h) : { url: o, sendOptions: h };
-    let l = c.authStore.isValid;
+    r(), c.beforeSend = s, delete c._resetAutoRefresh;
+  }, c.beforeSend = async (o, a) => {
+    var S;
+    const h = c.authStore.token;
+    if ((S = a.query) != null && S.autoRefresh)
+      return s ? s(o, a) : { url: o, sendOptions: a };
+    let u = c.authStore.isValid;
     if (
       // is loosely valid
-      l && // but it is going to expire in the next "threshold" seconds
-      I(c.authStore.token, n)
+      u && // but it is going to expire in the next "threshold" seconds
+      E(c.authStore.token, i)
     )
       try {
         await e();
       } catch {
-        l = !1;
+        u = !1;
       }
-    l || await t();
-    const f = h.headers || {};
-    for (let p in f)
-      if (p.toLowerCase() == "authorization" && // the request wasn't sent with a custom token
-      a == f[p] && c.authStore.token) {
-        f[p] = c.authStore.token;
+    u || await t();
+    const m = a.headers || {};
+    for (let y in m)
+      if (y.toLowerCase() == "authorization" && // the request wasn't sent with a custom token
+      h == m[y] && c.authStore.token) {
+        m[y] = c.authStore.token;
         break;
       }
-    return h.headers = f, i ? i(o, h) : { url: o, sendOptions: h };
+    return a.headers = m, s ? s(o, a) : { url: o, sendOptions: a };
   };
 }
-class z extends T {
+class G extends T {
   /**
    * @inheritdoc
    */
@@ -622,10 +711,10 @@ class z extends T {
    * If the current `client.authStore.model` matches with the updated id, then
    * on success the `client.authStore.model` will be updated with the result.
    */
-  async update(n, e, t) {
-    return super.update(n, e, t).then((i) => {
-      var s, r;
-      return ((s = this.client.authStore.model) == null ? void 0 : s.id) === i.id && typeof ((r = this.client.authStore.model) == null ? void 0 : r.collectionId) > "u" && this.client.authStore.save(this.client.authStore.token, i), i;
+  async update(i, e, t) {
+    return super.update(i, e, t).then((s) => {
+      var n, r;
+      return ((n = this.client.authStore.model) == null ? void 0 : n.id) === s.id && typeof ((r = this.client.authStore.model) == null ? void 0 : r.collectionId) > "u" && this.client.authStore.save(this.client.authStore.token, s), s;
     });
   }
   /**
@@ -634,10 +723,10 @@ class z extends T {
    * If the current `client.authStore.model` matches with the deleted id,
    * then on success the `client.authStore` will be cleared.
    */
-  async delete(n, e) {
-    return super.delete(n, e).then((t) => {
-      var i, s;
-      return t && ((i = this.client.authStore.model) == null ? void 0 : i.id) === n && typeof ((s = this.client.authStore.model) == null ? void 0 : s.collectionId) > "u" && this.client.authStore.clear(), t;
+  async delete(i, e) {
+    return super.delete(i, e).then((t) => {
+      var s, n;
+      return t && ((s = this.client.authStore.model) == null ? void 0 : s.id) === i && typeof ((n = this.client.authStore.model) == null ? void 0 : n.collectionId) > "u" && this.client.authStore.clear(), t;
     });
   }
   // ---------------------------------------------------------------
@@ -646,75 +735,75 @@ class z extends T {
   /**
    * Prepare successful authorize response.
    */
-  authResponse(n) {
-    const e = this.decode((n == null ? void 0 : n.admin) || {});
-    return n != null && n.token && (n != null && n.admin) && this.client.authStore.save(n.token, e), Object.assign({}, n, {
+  authResponse(i) {
+    const e = this.decode((i == null ? void 0 : i.admin) || {});
+    return i != null && i.token && (i != null && i.admin) && this.client.authStore.save(i.token, e), Object.assign({}, i, {
       // normalize common fields
-      token: (n == null ? void 0 : n.token) || "",
+      token: (i == null ? void 0 : i.token) || "",
       admin: e
     });
   }
-  async authWithPassword(n, e, t, i) {
-    let s = {
+  async authWithPassword(i, e, t, s) {
+    let n = {
       method: "POST",
       body: {
-        identity: n,
+        identity: i,
         password: e
       }
     };
-    s = d(
+    n = d(
       "This form of authWithPassword(email, pass, body?, query?) is deprecated. Consider replacing it with authWithPassword(email, pass, options?).",
-      s,
+      n,
       t,
-      i
-    );
-    const r = s.autoRefreshThreshold;
-    delete s.autoRefreshThreshold, s.autoRefresh || P(this.client);
-    let o = await this.client.send(
-      this.baseCrudPath + "/auth-with-password",
       s
     );
-    return o = this.authResponse(o), r && W(
+    const r = n.autoRefreshThreshold;
+    delete n.autoRefreshThreshold, n.autoRefresh || O(this.client);
+    let o = await this.client.send(
+      this.baseCrudPath + "/auth-with-password",
+      n
+    );
+    return o = this.authResponse(o), r && J(
       this.client,
       r,
       () => this.authRefresh({ autoRefresh: !0 }),
       () => this.authWithPassword(
-        n,
+        i,
         e,
-        Object.assign({ autoRefresh: !0 }, s)
+        Object.assign({ autoRefresh: !0 }, n)
       )
     ), o;
   }
-  async authRefresh(n, e) {
+  async authRefresh(i, e) {
     let t = {
       method: "POST"
     };
     return t = d(
       "This form of authRefresh(body?, query?) is deprecated. Consider replacing it with authRefresh(options?).",
       t,
-      n,
+      i,
       e
     ), this.client.send(this.baseCrudPath + "/auth-refresh", t).then(this.authResponse.bind(this));
   }
-  async requestPasswordReset(n, e, t) {
-    let i = {
+  async requestPasswordReset(i, e, t) {
+    let s = {
       method: "POST",
       body: {
-        email: n
+        email: i
       }
     };
-    return i = d(
+    return s = d(
       "This form of requestPasswordReset(email, body?, query?) is deprecated. Consider replacing it with requestPasswordReset(email, options?).",
-      i,
+      s,
       e,
       t
-    ), this.client.send(this.baseCrudPath + "/request-password-reset", i).then(() => !0);
+    ), this.client.send(this.baseCrudPath + "/request-password-reset", s).then(() => !0);
   }
-  async confirmPasswordReset(n, e, t, i, s) {
+  async confirmPasswordReset(i, e, t, s, n) {
     let r = {
       method: "POST",
       body: {
-        token: n,
+        token: i,
         password: e,
         passwordConfirm: t
       }
@@ -722,12 +811,12 @@ class z extends T {
     return r = d(
       "This form of confirmPasswordReset(resetToken, password, passwordConfirm, body?, query?) is deprecated. Consider replacing it with confirmPasswordReset(resetToken, password, passwordConfirm, options?).",
       r,
-      i,
-      s
+      s,
+      n
     ), this.client.send(this.baseCrudPath + "/confirm-password-reset", r).then(() => !0);
   }
 }
-const B = [
+const V = [
   "requestKey",
   "$cancelKey",
   "$autoCancel",
@@ -750,26 +839,26 @@ const B = [
   "signal",
   "window"
 ];
-function V(c) {
+function q(c) {
   if (c) {
     c.query = c.query || {};
-    for (let n in c)
-      B.includes(n) || (c.query[n] = c[n], delete c[n]);
+    for (let i in c)
+      V.includes(i) || (c.query[i] = c[i], delete c[i]);
   }
 }
-class J extends C {
+class A extends p {
   constructor() {
     super(...arguments);
-    u(this, "clientId", "");
-    u(this, "eventSource", null);
-    u(this, "subscriptions", {});
-    u(this, "lastSentSubscriptions", []);
-    u(this, "connectTimeoutId");
-    u(this, "maxConnectTimeout", 15e3);
-    u(this, "reconnectTimeoutId");
-    u(this, "reconnectAttempts", 0);
-    u(this, "maxReconnectAttempts", 1 / 0);
-    u(this, "predefinedReconnectIntervals", [
+    l(this, "clientId", "");
+    l(this, "eventSource", null);
+    l(this, "subscriptions", {});
+    l(this, "lastSentSubscriptions", []);
+    l(this, "connectTimeoutId");
+    l(this, "maxConnectTimeout", 15e3);
+    l(this, "reconnectTimeoutId");
+    l(this, "reconnectAttempts", 0);
+    l(this, "maxReconnectAttempts", 1 / 0);
+    l(this, "predefinedReconnectIntervals", [
       200,
       300,
       500,
@@ -778,7 +867,7 @@ class J extends C {
       1500,
       2e3
     ]);
-    u(this, "pendingConnects", []);
+    l(this, "pendingConnects", []);
   }
   /**
    * Returns whether the realtime connection has been established.
@@ -794,28 +883,28 @@ class J extends C {
    * If the SSE connection is not started yet,
    * this method will also initialize it.
    */
-  async subscribe(e, t, i) {
+  async subscribe(e, t, s) {
     var o;
     if (!e)
       throw new Error("topic must be set.");
-    let s = e;
-    if (i) {
-      V(i);
-      const h = "options=" + encodeURIComponent(
-        JSON.stringify({ query: i.query, headers: i.headers })
+    let n = e;
+    if (s) {
+      q(s);
+      const a = "options=" + encodeURIComponent(
+        JSON.stringify({ query: s.query, headers: s.headers })
       );
-      s += (s.includes("?") ? "&" : "?") + h;
+      n += (n.includes("?") ? "&" : "?") + a;
     }
-    const r = function(h) {
-      const a = h;
-      let l;
+    const r = function(a) {
+      const h = a;
+      let u;
       try {
-        l = JSON.parse(a == null ? void 0 : a.data);
+        u = JSON.parse(h == null ? void 0 : h.data);
       } catch {
       }
-      t(l || {});
+      t(u || {});
     };
-    return this.subscriptions[s] || (this.subscriptions[s] = []), this.subscriptions[s].push(r), this.isConnected ? this.subscriptions[s].length === 1 ? await this.submitSubscriptions() : (o = this.eventSource) == null || o.addEventListener(s, r) : await this.connect(), async () => this.unsubscribeByTopicAndListener(e, r);
+    return this.subscriptions[n] || (this.subscriptions[n] = []), this.subscriptions[n].push(r), this.isConnected ? this.subscriptions[n].length === 1 ? await this.submitSubscriptions() : (o = this.eventSource) == null || o.addEventListener(n, r) : await this.connect(), async () => this.unsubscribeByTopicAndListener(e, r);
   }
   /**
    * Unsubscribe from all subscription listeners with the specified topic.
@@ -829,16 +918,16 @@ class J extends C {
    * unsubscribe operation there are no active subscriptions left.
    */
   async unsubscribe(e) {
-    var i;
+    var s;
     let t = !1;
     if (!e)
       this.subscriptions = {};
     else {
-      const s = this.getSubscriptionsByTopic(e);
-      for (let r in s)
+      const n = this.getSubscriptionsByTopic(e);
+      for (let r in n)
         if (this.hasSubscriptionListeners(r)) {
           for (let o of this.subscriptions[r])
-            (i = this.eventSource) == null || i.removeEventListener(r, o);
+            (s = this.eventSource) == null || s.removeEventListener(r, o);
           delete this.subscriptions[r], t || (t = !0);
         }
     }
@@ -853,14 +942,14 @@ class J extends C {
    * unsubscribe operation there are no active subscriptions left.
    */
   async unsubscribeByPrefix(e) {
-    var i;
+    var s;
     let t = !1;
-    for (let s in this.subscriptions)
-      if ((s + "?").startsWith(e)) {
+    for (let n in this.subscriptions)
+      if ((n + "?").startsWith(e)) {
         t = !0;
-        for (let r of this.subscriptions[s])
-          (i = this.eventSource) == null || i.removeEventListener(s, r);
-        delete this.subscriptions[s];
+        for (let r of this.subscriptions[n])
+          (s = this.eventSource) == null || s.removeEventListener(n, r);
+        delete this.subscriptions[n];
       }
     t && (this.hasSubscriptionListeners() ? await this.submitSubscriptions() : this.disconnect());
   }
@@ -875,24 +964,24 @@ class J extends C {
    */
   async unsubscribeByTopicAndListener(e, t) {
     var r;
-    let i = !1;
-    const s = this.getSubscriptionsByTopic(e);
-    for (let o in s) {
+    let s = !1;
+    const n = this.getSubscriptionsByTopic(e);
+    for (let o in n) {
       if (!Array.isArray(this.subscriptions[o]) || !this.subscriptions[o].length)
         continue;
-      let h = !1;
-      for (let a = this.subscriptions[o].length - 1; a >= 0; a--)
-        this.subscriptions[o][a] === t && (h = !0, delete this.subscriptions[o][a], this.subscriptions[o].splice(a, 1), (r = this.eventSource) == null || r.removeEventListener(o, t));
-      h && (this.subscriptions[o].length || delete this.subscriptions[o], !i && !this.hasSubscriptionListeners(o) && (i = !0));
+      let a = !1;
+      for (let h = this.subscriptions[o].length - 1; h >= 0; h--)
+        this.subscriptions[o][h] === t && (a = !0, delete this.subscriptions[o][h], this.subscriptions[o].splice(h, 1), (r = this.eventSource) == null || r.removeEventListener(o, t));
+      a && (this.subscriptions[o].length || delete this.subscriptions[o], !s && !this.hasSubscriptionListeners(o) && (s = !0));
     }
-    this.hasSubscriptionListeners() ? i && await this.submitSubscriptions() : this.disconnect();
+    this.hasSubscriptionListeners() ? s && await this.submitSubscriptions() : this.disconnect();
   }
   hasSubscriptionListeners(e) {
-    var t, i;
+    var t, s;
     if (this.subscriptions = this.subscriptions || {}, e)
       return !!((t = this.subscriptions[e]) != null && t.length);
-    for (let s in this.subscriptions)
-      if ((i = this.subscriptions[s]) != null && i.length)
+    for (let n in this.subscriptions)
+      if ((s = this.subscriptions[n]) != null && s.length)
         return !0;
     return !1;
   }
@@ -916,8 +1005,8 @@ class J extends C {
   getSubscriptionsByTopic(e) {
     const t = {};
     e = e.includes("?") ? e : e + "?";
-    for (let i in this.subscriptions)
-      (i + "?").startsWith(e) && (t[i] = this.subscriptions[i]);
+    for (let s in this.subscriptions)
+      (s + "?").startsWith(e) && (t[s] = this.subscriptions[s]);
     return t;
   }
   getNonEmptySubscriptionKeys() {
@@ -956,19 +1045,19 @@ class J extends C {
     }, this.eventSource.addEventListener("PB_CONNECT", (e) => {
       const t = e;
       this.clientId = t == null ? void 0 : t.lastEventId, this.submitSubscriptions().then(async () => {
-        let i = 3;
-        for (; this.hasUnsentSubscriptions() && i > 0; )
-          i--, await this.submitSubscriptions();
+        let s = 3;
+        for (; this.hasUnsentSubscriptions() && s > 0; )
+          s--, await this.submitSubscriptions();
       }).then(() => {
-        for (let s of this.pendingConnects)
-          s.resolve();
+        for (let n of this.pendingConnects)
+          n.resolve();
         this.pendingConnects = [], this.reconnectAttempts = 0, clearTimeout(this.reconnectTimeoutId), clearTimeout(this.connectTimeoutId);
-        const i = this.getSubscriptionsByTopic("PB_CONNECT");
-        for (let s in i)
-          for (let r of i[s])
+        const s = this.getSubscriptionsByTopic("PB_CONNECT");
+        for (let n in s)
+          for (let r of s[n])
             r(e);
-      }).catch((i) => {
-        this.clientId = "", this.connectErrorHandler(i);
+      }).catch((s) => {
+        this.clientId = "", this.connectErrorHandler(s);
       });
     });
   }
@@ -985,8 +1074,8 @@ class J extends C {
     if (clearTimeout(this.connectTimeoutId), clearTimeout(this.reconnectTimeoutId), // wasn't previously connected -> direct reject
     !this.clientId && !this.reconnectAttempts || // was previously connected but the max reconnection limit has been reached
     this.reconnectAttempts > this.maxReconnectAttempts) {
-      for (let i of this.pendingConnects)
-        i.reject(new m(e));
+      for (let s of this.pendingConnects)
+        s.reject(new f(e));
       this.pendingConnects = [], this.disconnect();
       return;
     }
@@ -1000,16 +1089,16 @@ class J extends C {
     var t;
     if (clearTimeout(this.connectTimeoutId), clearTimeout(this.reconnectTimeoutId), this.removeAllSubscriptionListeners(), this.client.cancelRequest(this.getSubscriptionsCancelKey()), (t = this.eventSource) == null || t.close(), this.eventSource = null, this.clientId = "", !e) {
       this.reconnectAttempts = 0;
-      for (let i of this.pendingConnects)
-        i.resolve();
+      for (let s of this.pendingConnects)
+        s.resolve();
       this.pendingConnects = [];
     }
   }
 }
-class Q extends T {
+class z extends T {
   constructor(e, t) {
     super(e);
-    u(this, "collectionIdOrName");
+    l(this, "collectionIdOrName");
     this.collectionIdOrName = t;
   }
   /**
@@ -1040,7 +1129,7 @@ class Q extends T {
    * You can use the returned `UnsubscribeFunc` to remove only a single subscription.
    * Or use `unsubscribe(topic)` if you want to remove all subscriptions attached to the topic.
    */
-  async subscribe(e, t, i) {
+  async subscribe(e, t, s) {
     if (!e)
       throw new Error("Missing topic.");
     if (!t)
@@ -1048,7 +1137,7 @@ class Q extends T {
     return this.client.realtime.subscribe(
       this.collectionIdOrName + "/" + e,
       t,
-      i
+      s
     );
   }
   /**
@@ -1069,14 +1158,14 @@ class Q extends T {
   async getFullList(e, t) {
     if (typeof e == "number")
       return super.getFullList(e, t);
-    const i = Object.assign({}, e, t);
-    return super.getFullList(i);
+    const s = Object.assign({}, e, t);
+    return super.getFullList(s);
   }
   /**
    * @inheritdoc
    */
-  async getList(e = 1, t = 30, i) {
-    return super.getList(e, t, i);
+  async getList(e = 1, t = 30, s) {
+    return super.getList(e, t, s);
   }
   /**
    * @inheritdoc
@@ -1102,12 +1191,12 @@ class Q extends T {
    * If the current `client.authStore.model` matches with the updated id, then
    * on success the `client.authStore.model` will be updated with the result.
    */
-  async update(e, t, i) {
-    return super.update(e, t, i).then((s) => {
-      var r, o, h;
+  async update(e, t, s) {
+    return super.update(e, t, s).then((n) => {
+      var r, o, a;
       return (
         // is record auth
-        ((r = this.client.authStore.model) == null ? void 0 : r.id) === (s == null ? void 0 : s.id) && (((o = this.client.authStore.model) == null ? void 0 : o.collectionId) === this.collectionIdOrName || ((h = this.client.authStore.model) == null ? void 0 : h.collectionName) === this.collectionIdOrName) && this.client.authStore.save(this.client.authStore.token, s), s
+        ((r = this.client.authStore.model) == null ? void 0 : r.id) === (n == null ? void 0 : n.id) && (((o = this.client.authStore.model) == null ? void 0 : o.collectionId) === this.collectionIdOrName || ((a = this.client.authStore.model) == null ? void 0 : a.collectionName) === this.collectionIdOrName) && this.client.authStore.save(this.client.authStore.token, n), n
       );
     });
   }
@@ -1118,10 +1207,10 @@ class Q extends T {
    * then on success the `client.authStore` will be cleared.
    */
   async delete(e, t) {
-    return super.delete(e, t).then((i) => {
-      var s, r, o;
-      return i && // is record auth
-      ((s = this.client.authStore.model) == null ? void 0 : s.id) === e && (((r = this.client.authStore.model) == null ? void 0 : r.collectionId) === this.collectionIdOrName || ((o = this.client.authStore.model) == null ? void 0 : o.collectionName) === this.collectionIdOrName) && this.client.authStore.clear(), i;
+    return super.delete(e, t).then((s) => {
+      var n, r, o;
+      return s && // is record auth
+      ((n = this.client.authStore.model) == null ? void 0 : n.id) === e && (((r = this.client.authStore.model) == null ? void 0 : r.collectionId) === this.collectionIdOrName || ((o = this.client.authStore.model) == null ? void 0 : o.collectionName) === this.collectionIdOrName) && this.client.authStore.clear(), s;
     });
   }
   // ---------------------------------------------------------------
@@ -1156,7 +1245,7 @@ class Q extends T {
       authProviders: Array.isArray(t == null ? void 0 : t.authProviders) ? t == null ? void 0 : t.authProviders : []
     }));
   }
-  async authWithPassword(e, t, i, s) {
+  async authWithPassword(e, t, s, n) {
     let r = {
       method: "POST",
       body: {
@@ -1167,27 +1256,27 @@ class Q extends T {
     return r = d(
       "This form of authWithPassword(usernameOrEmail, pass, body?, query?) is deprecated. Consider replacing it with authWithPassword(usernameOrEmail, pass, options?).",
       r,
-      i,
-      s
+      s,
+      n
     ), this.client.send(this.baseCollectionPath + "/auth-with-password", r).then((o) => this.authResponse(o));
   }
-  async authWithOAuth2Code(e, t, i, s, r, o, h) {
-    let a = {
+  async authWithOAuth2Code(e, t, s, n, r, o, a) {
+    let h = {
       method: "POST",
       body: {
         provider: e,
         code: t,
-        codeVerifier: i,
-        redirectUrl: s,
+        codeVerifier: s,
+        redirectUrl: n,
         createData: r
       }
     };
-    return a = d(
+    return h = d(
       "This form of authWithOAuth2Code(provider, code, codeVerifier, redirectUrl, createData?, body?, query?) is deprecated. Consider replacing it with authWithOAuth2Code(provider, code, codeVerifier, redirectUrl, createData?, options?).",
-      a,
+      h,
       o,
-      h
-    ), this.client.send(this.baseCollectionPath + "/auth-with-oauth2", a).then((l) => this.authResponse(l));
+      a
+    ), this.client.send(this.baseCollectionPath + "/auth-with-oauth2", h).then((u) => this.authResponse(u));
   }
   async authWithOAuth2(...e) {
     if (e.length > 1 || typeof (e == null ? void 0 : e[0]) == "string")
@@ -1202,150 +1291,150 @@ class Q extends T {
         (e == null ? void 0 : e[5]) || {},
         (e == null ? void 0 : e[6]) || {}
       );
-    const t = (e == null ? void 0 : e[0]) || {}, s = (await this.listAuthMethods()).authProviders.find(
-      (l) => l.name === t.provider
+    const t = (e == null ? void 0 : e[0]) || {}, n = (await this.listAuthMethods()).authProviders.find(
+      (u) => u.name === t.provider
     );
-    if (!s)
-      throw new m(
+    if (!n)
+      throw new f(
         new Error(`Missing or invalid provider "${t.provider}".`)
       );
-    const r = this.client.buildUrl("/api/oauth2-redirect"), o = new J(this.client);
-    let h = null;
-    t.urlCallback || (h = E(void 0));
-    function a() {
-      h == null || h.close(), o.unsubscribe();
+    const r = this.client.buildUrl("/api/oauth2-redirect"), o = new A(this.client);
+    let a = null;
+    t.urlCallback || (a = I(void 0));
+    function h() {
+      a == null || a.close(), o.unsubscribe();
     }
-    return new Promise(async (l, f) => {
-      var w;
+    return new Promise(async (u, m) => {
+      var S;
       try {
         await o.subscribe("@oauth2", async (b) => {
-          const A = o.clientId;
+          const x = o.clientId;
           try {
-            if (!b.state || A !== b.state)
+            if (!b.state || x !== b.state)
               throw new Error("State parameters don't match.");
             if (b.error || !b.code)
               throw new Error(
                 "OAuth2 redirect error or missing code: " + b.error
               );
-            const y = Object.assign({}, t);
-            delete y.provider, delete y.scopes, delete y.createData, delete y.urlCallback;
-            const x = await this.authWithOAuth2Code(
-              s.name,
+            const g = Object.assign({}, t);
+            delete g.provider, delete g.scopes, delete g.createData, delete g.urlCallback;
+            const L = await this.authWithOAuth2Code(
+              n.name,
               b.code,
-              s.codeVerifier,
+              n.codeVerifier,
               r,
               t.createData,
-              y
+              g
             );
-            l(x);
-          } catch (y) {
-            f(new m(y));
+            u(L);
+          } catch (g) {
+            m(new f(g));
           }
-          a();
+          h();
         });
-        const p = {
+        const y = {
           state: o.clientId
         };
-        (w = t.scopes) != null && w.length && (p.scope = t.scopes.join(" "));
-        const q = this._replaceQueryParams(
-          s.authUrl + r,
-          p
+        (S = t.scopes) != null && S.length && (y.scope = t.scopes.join(" "));
+        const j = this._replaceQueryParams(
+          n.authUrl + r,
+          y
         );
         await (t.urlCallback || function(b) {
-          h ? h.location.href = b : h = E(b);
-        })(q);
-      } catch (p) {
-        a(), f(new m(p));
+          a ? a.location.href = b : a = I(b);
+        })(j);
+      } catch (y) {
+        h(), m(new f(y));
       }
     });
   }
   async authRefresh(e, t) {
-    let i = {
+    let s = {
       method: "POST"
     };
-    return i = d(
+    return s = d(
       "This form of authRefresh(body?, query?) is deprecated. Consider replacing it with authRefresh(options?).",
-      i,
+      s,
       e,
       t
-    ), this.client.send(this.baseCollectionPath + "/auth-refresh", i).then((s) => this.authResponse(s));
+    ), this.client.send(this.baseCollectionPath + "/auth-refresh", s).then((n) => this.authResponse(n));
   }
-  async requestPasswordReset(e, t, i) {
-    let s = {
+  async requestPasswordReset(e, t, s) {
+    let n = {
       method: "POST",
       body: {
         email: e
       }
     };
-    return s = d(
+    return n = d(
       "This form of requestPasswordReset(email, body?, query?) is deprecated. Consider replacing it with requestPasswordReset(email, options?).",
-      s,
+      n,
       t,
-      i
-    ), this.client.send(this.baseCollectionPath + "/request-password-reset", s).then(() => !0);
+      s
+    ), this.client.send(this.baseCollectionPath + "/request-password-reset", n).then(() => !0);
   }
-  async confirmPasswordReset(e, t, i, s, r) {
+  async confirmPasswordReset(e, t, s, n, r) {
     let o = {
       method: "POST",
       body: {
         token: e,
         password: t,
-        passwordConfirm: i
+        passwordConfirm: s
       }
     };
     return o = d(
       "This form of confirmPasswordReset(token, password, passwordConfirm, body?, query?) is deprecated. Consider replacing it with confirmPasswordReset(token, password, passwordConfirm, options?).",
       o,
-      s,
+      n,
       r
     ), this.client.send(this.baseCollectionPath + "/confirm-password-reset", o).then(() => !0);
   }
-  async requestVerification(e, t, i) {
-    let s = {
+  async requestVerification(e, t, s) {
+    let n = {
       method: "POST",
       body: {
         email: e
       }
     };
-    return s = d(
+    return n = d(
       "This form of requestVerification(email, body?, query?) is deprecated. Consider replacing it with requestVerification(email, options?).",
-      s,
+      n,
       t,
-      i
-    ), this.client.send(this.baseCollectionPath + "/request-verification", s).then(() => !0);
+      s
+    ), this.client.send(this.baseCollectionPath + "/request-verification", n).then(() => !0);
   }
-  async confirmVerification(e, t, i) {
-    let s = {
+  async confirmVerification(e, t, s) {
+    let n = {
       method: "POST",
       body: {
         token: e
       }
     };
-    return s = d(
+    return n = d(
       "This form of confirmVerification(token, body?, query?) is deprecated. Consider replacing it with confirmVerification(token, options?).",
-      s,
+      n,
       t,
-      i
-    ), this.client.send(this.baseCollectionPath + "/confirm-verification", s).then(() => {
-      const r = g(e), o = this.client.authStore.model;
+      s
+    ), this.client.send(this.baseCollectionPath + "/confirm-verification", n).then(() => {
+      const r = w(e), o = this.client.authStore.model;
       return o && !o.verified && o.id === r.id && o.collectionId === r.collectionId && (o.verified = !0, this.client.authStore.save(this.client.authStore.token, o)), !0;
     });
   }
-  async requestEmailChange(e, t, i) {
-    let s = {
+  async requestEmailChange(e, t, s) {
+    let n = {
       method: "POST",
       body: {
         newEmail: e
       }
     };
-    return s = d(
+    return n = d(
       "This form of requestEmailChange(newEmail, body?, query?) is deprecated. Consider replacing it with requestEmailChange(newEmail, options?).",
-      s,
+      n,
       t,
-      i
-    ), this.client.send(this.baseCollectionPath + "/request-email-change", s).then(() => !0);
+      s
+    ), this.client.send(this.baseCollectionPath + "/request-email-change", n).then(() => !0);
   }
-  async confirmEmailChange(e, t, i, s) {
+  async confirmEmailChange(e, t, s, n) {
     let r = {
       method: "POST",
       body: {
@@ -1356,11 +1445,11 @@ class Q extends T {
     return r = d(
       "This form of confirmEmailChange(token, password, body?, query?) is deprecated. Consider replacing it with confirmEmailChange(token, password, options?).",
       r,
-      i,
-      s
+      s,
+      n
     ), this.client.send(this.baseCollectionPath + "/confirm-email-change", r).then(() => {
-      const o = g(e), h = this.client.authStore.model;
-      return h && h.id === o.id && h.collectionId === o.collectionId && this.client.authStore.clear(), !0;
+      const o = w(e), a = this.client.authStore.model;
+      return a && a.id === o.id && a.collectionId === o.collectionId && this.client.authStore.clear(), !0;
     });
   }
   /**
@@ -1384,15 +1473,15 @@ class Q extends T {
    *
    * @throws {ClientResponseError}
    */
-  async unlinkExternalAuth(e, t, i) {
-    return i = Object.assign(
+  async unlinkExternalAuth(e, t, s) {
+    return s = Object.assign(
       {
         method: "DELETE"
       },
-      i
+      s
     ), this.client.send(
       this.baseCrudPath + "/" + encodeURIComponent(e) + "/external-auths/" + encodeURIComponent(t),
-      i
+      s
     ).then(() => !0);
   }
   // ---------------------------------------------------------------
@@ -1401,40 +1490,40 @@ class Q extends T {
   //
   // note: for details behind some of the decode/encode parsing check https://unixpapa.com/js/querystring.html
   _replaceQueryParams(e, t = {}) {
-    let i = e, s = "";
-    e.indexOf("?") >= 0 && (i = e.substring(0, e.indexOf("?")), s = e.substring(e.indexOf("?") + 1));
-    const o = {}, h = s.split("&");
-    for (const a of h) {
-      if (a == "")
+    let s = e, n = "";
+    e.indexOf("?") >= 0 && (s = e.substring(0, e.indexOf("?")), n = e.substring(e.indexOf("?") + 1));
+    const o = {}, a = n.split("&");
+    for (const h of a) {
+      if (h == "")
         continue;
-      const l = a.split("=");
-      o[decodeURIComponent(l[0].replace(/\+/g, " "))] = decodeURIComponent((l[1] || "").replace(/\+/g, " "));
+      const u = h.split("=");
+      o[decodeURIComponent(u[0].replace(/\+/g, " "))] = decodeURIComponent((u[1] || "").replace(/\+/g, " "));
     }
-    for (let a in t)
-      t.hasOwnProperty(a) && (t[a] == null ? delete o[a] : o[a] = t[a]);
-    s = "";
-    for (let a in o)
-      o.hasOwnProperty(a) && (s != "" && (s += "&"), s += encodeURIComponent(a.replace(/%20/g, "+")) + "=" + encodeURIComponent(o[a].replace(/%20/g, "+")));
-    return s != "" ? i + "?" + s : i;
+    for (let h in t)
+      t.hasOwnProperty(h) && (t[h] == null ? delete o[h] : o[h] = t[h]);
+    n = "";
+    for (let h in o)
+      o.hasOwnProperty(h) && (n != "" && (n += "&"), n += encodeURIComponent(h.replace(/%20/g, "+")) + "=" + encodeURIComponent(o[h].replace(/%20/g, "+")));
+    return n != "" ? s + "?" + n : s;
   }
 }
-function E(c) {
+function I(c) {
   if (typeof window > "u" || !(window != null && window.open))
-    throw new m(
+    throw new f(
       new Error(
         "Not in a browser context - please pass a custom urlCallback function."
       )
     );
-  let n = 1024, e = 768, t = window.innerWidth, i = window.innerHeight;
-  n = n > t ? t : n, e = e > i ? i : e;
-  let s = t / 2 - n / 2, r = i / 2 - e / 2;
+  let i = 1024, e = 768, t = window.innerWidth, s = window.innerHeight;
+  i = i > t ? t : i, e = e > s ? s : e;
+  let n = t / 2 - i / 2, r = s / 2 - e / 2;
   return window.open(
     c,
     "popup_window",
-    "width=" + n + ",height=" + e + ",top=" + r + ",left=" + s + ",resizable,menubar=no"
+    "width=" + i + ",height=" + e + ",top=" + r + ",left=" + n + ",resizable,menubar=no"
   );
 }
-class $ extends T {
+class M extends T {
   /**
    * @inheritdoc
    */
@@ -1450,12 +1539,12 @@ class $ extends T {
    *
    * @throws {ClientResponseError}
    */
-  async import(n, e = !1, t) {
+  async import(i, e = !1, t) {
     return t = Object.assign(
       {
         method: "PUT",
         body: {
-          collections: n,
+          collections: i,
           deleteMissing: e
         }
       },
@@ -1463,16 +1552,16 @@ class $ extends T {
     ), this.client.send(this.baseCrudPath + "/import", t).then(() => !0);
   }
 }
-class Y extends C {
+class Q extends p {
   /**
    * Returns paginated logs list.
    *
    * @throws {ClientResponseError}
    */
-  async getList(n = 1, e = 30, t) {
+  async getList(i = 1, e = 30, t) {
     return t = Object.assign({ method: "GET" }, t), t.query = Object.assign(
       {
-        page: n,
+        page: i,
         perPage: e
       },
       t.query
@@ -1485,9 +1574,9 @@ class Y extends C {
    *
    * @throws {ClientResponseError}
    */
-  async getOne(n, e) {
-    if (!n)
-      throw new m({
+  async getOne(i, e) {
+    if (!i)
+      throw new f({
         url: this.client.buildUrl("/api/logs/"),
         status: 404,
         response: {
@@ -1501,43 +1590,477 @@ class Y extends C {
         method: "GET"
       },
       e
-    ), this.client.send("/api/logs/" + encodeURIComponent(n), e);
+    ), this.client.send("/api/logs/" + encodeURIComponent(i), e);
   }
   /**
    * Returns logs statistics.
    *
    * @throws {ClientResponseError}
    */
-  async getStats(n) {
-    return n = Object.assign(
+  async getStats(i) {
+    return i = Object.assign(
       {
         method: "GET"
       },
-      n
-    ), this.client.send("/api/logs/stats", n);
+      i
+    ), this.client.send("/api/logs/stats", i);
   }
 }
-class X extends C {
+class Y extends p {
   /**
    * Checks the health status of the api.
    *
    * @throws {ClientResponseError}
    */
-  async check(n) {
-    return n = Object.assign(
+  async check(i) {
+    return i = Object.assign(
       {
         method: "GET"
       },
-      n
-    ), this.client.send("/api/health", n);
+      i
+    ), this.client.send("/api/health", i);
   }
 }
-class Z extends R {
+class X extends p {
+  /**
+   * Builds and returns an absolute record file url for the provided filename.
+   */
+  getUrl(i, e, t = {}) {
+    if (!e || !(i != null && i.id) || !(i != null && i.collectionId || i != null && i.collectionName))
+      return "";
+    const s = [];
+    s.push("api"), s.push("files"), s.push(encodeURIComponent(i.collectionId || i.collectionName)), s.push(encodeURIComponent(i.id)), s.push(encodeURIComponent(e));
+    let n = this.client.buildUrl(s.join("/"));
+    if (Object.keys(t).length) {
+      t.download === !1 && delete t.download;
+      const r = new URLSearchParams(t);
+      n += (n.includes("?") ? "&" : "?") + r;
+    }
+    return n;
+  }
+  /**
+   * Requests a new private file access token for the current auth model (admin or record).
+   *
+   * @throws {ClientResponseError}
+   */
+  async getToken(i) {
+    return i = Object.assign(
+      {
+        method: "POST"
+      },
+      i
+    ), this.client.send("/api/files/token", i).then((e) => (e == null ? void 0 : e.token) || "");
+  }
+}
+class Z extends p {
+  /**
+   * Returns list with all available backup files.
+   *
+   * @throws {ClientResponseError}
+   */
+  async getFullList(i) {
+    return i = Object.assign(
+      {
+        method: "GET"
+      },
+      i
+    ), this.client.send("/api/backups", i);
+  }
+  /**
+   * Initializes a new backup.
+   *
+   * @throws {ClientResponseError}
+   */
+  async create(i, e) {
+    return e = Object.assign(
+      {
+        method: "POST",
+        body: {
+          name: i
+        }
+      },
+      e
+    ), this.client.send("/api/backups", e).then(() => !0);
+  }
+  /**
+   * Uploads an existing backup file.
+   *
+   * Example:
+   *
+   * ```js
+   * await pb.backups.upload({
+   *     file: new Blob([...]),
+   * });
+   * ```
+   *
+   * @throws {ClientResponseError}
+   */
+  async upload(i, e) {
+    return e = Object.assign(
+      {
+        method: "POST",
+        body: i
+      },
+      e
+    ), this.client.send("/api/backups/upload", e).then(() => !0);
+  }
+  /**
+   * Deletes a single backup file.
+   *
+   * @throws {ClientResponseError}
+   */
+  async delete(i, e) {
+    return e = Object.assign(
+      {
+        method: "DELETE"
+      },
+      e
+    ), this.client.send(`/api/backups/${encodeURIComponent(i)}`, e).then(() => !0);
+  }
+  /**
+   * Initializes an app data restore from an existing backup.
+   *
+   * @throws {ClientResponseError}
+   */
+  async restore(i, e) {
+    return e = Object.assign(
+      {
+        method: "POST"
+      },
+      e
+    ), this.client.send(`/api/backups/${encodeURIComponent(i)}/restore`, e).then(() => !0);
+  }
+  /**
+   * Builds a download url for a single existing backup using an
+   * admin file token and the backup file key.
+   *
+   * The file token can be generated via `pb.files.getToken()`.
+   */
+  getDownloadUrl(i, e) {
+    return this.client.buildUrl(
+      `/api/backups/${encodeURIComponent(e)}?token=${encodeURIComponent(i)}`
+    );
+  }
+}
+class te {
+  constructor(i = "/", e, t = "en-US") {
+    /**
+     * The base PocketBase backend url address (eg. 'http://127.0.0.1.8090').
+     */
+    l(this, "baseUrl");
+    /**
+     * Hook that get triggered right before sending the fetch request,
+     * allowing you to inspect and modify the url and request options.
+     *
+     * For list of the possible options check https://developer.mozilla.org/en-US/docs/Web/API/fetch#options
+     *
+     * You can return a non-empty result object `{ url, options }` to replace the url and request options entirely.
+     *
+     * Example:
+     * ```js
+     * client.beforeSend = function (url, options) {
+     *     options.headers = Object.assign({}, options.headers, {
+     *         'X-Custom-Header': 'example',
+     *     });
+     *
+     *     return { url, options }
+     * };
+     * ```
+     */
+    l(this, "beforeSend");
+    /**
+     * Hook that get triggered after successfully sending the fetch request,
+     * allowing you to inspect/modify the response object and its parsed data.
+     *
+     * Returns the new Promise resolved `data` that will be returned to the client.
+     *
+     * Example:
+     * ```js
+     * client.afterSend = function (response, data) {
+     *     if (response.status != 200) {
+     *         throw new ClientResponseError({
+     *             url:      response.url,
+     *             status:   response.status,
+     *             response: { ... },
+     *         });
+     *     }
+     *
+     *     return data;
+     * };
+     * ```
+     */
+    l(this, "afterSend");
+    /**
+     * Optional language code (default to `en-US`) that will be sent
+     * with the requests to the server as `Accept-Language` header.
+     */
+    l(this, "lang");
+    /**
+     * A replaceable instance of the local auth store service.
+     */
+    l(this, "authStore");
+    /**
+     * An instance of the service that handles the **Settings APIs**.
+     */
+    l(this, "settings");
+    /**
+     * An instance of the service that handles the **Admin APIs**.
+     */
+    l(this, "admins");
+    /**
+     * An instance of the service that handles the **Collection APIs**.
+     */
+    l(this, "collections");
+    /**
+     * An instance of the service that handles the **File APIs**.
+     */
+    l(this, "files");
+    /**
+     * An instance of the service that handles the **Log APIs**.
+     */
+    l(this, "logs");
+    /**
+     * An instance of the service that handles the **Realtime APIs**.
+     */
+    l(this, "realtime");
+    /**
+     * An instance of the service that handles the **Health APIs**.
+     */
+    l(this, "health");
+    /**
+     * An instance of the service that handles the **Backup APIs**.
+     */
+    l(this, "backups");
+    l(this, "cancelControllers", {});
+    l(this, "recordServices", {});
+    l(this, "enableAutoCancellation", !0);
+    this.baseUrl = i, this.lang = t, this.authStore = e || new $(), this.admins = new G(this), this.collections = new M(this), this.files = new X(this), this.logs = new Q(this), this.settings = new H(this), this.realtime = new A(this), this.health = new Y(this), this.backups = new Z(this);
+  }
+  /**
+   * Returns the RecordService associated to the specified collection.
+   *
+   * @param  {string} idOrName
+   * @return {RecordService}
+   */
+  collection(i) {
+    return this.recordServices[i] || (this.recordServices[i] = new z(this, i)), this.recordServices[i];
+  }
+  /**
+   * Globally enable or disable auto cancellation for pending duplicated requests.
+   */
+  autoCancellation(i) {
+    return this.enableAutoCancellation = !!i, this;
+  }
+  /**
+   * Cancels single request by its cancellation key.
+   */
+  cancelRequest(i) {
+    return this.cancelControllers[i] && (this.cancelControllers[i].abort(), delete this.cancelControllers[i]), this;
+  }
+  /**
+   * Cancels all pending requests.
+   */
+  cancelAllRequests() {
+    for (let i in this.cancelControllers)
+      this.cancelControllers[i].abort();
+    return this.cancelControllers = {}, this;
+  }
+  /**
+   * Constructs a filter expression with placeholders populated from a parameters object.
+   *
+   * Placeholder parameters are defined with the `{:paramName}` notation.
+   *
+   * The following parameter values are supported:
+   *
+   * - `string` (_single quotes are autoescaped_)
+   * - `number`
+   * - `boolean`
+   * - `Date` object (_stringified into the PocketBase datetime format_)
+   * - `null`
+   * - everything else is converted to a string using `JSON.stringify()`
+   *
+   * Example:
+   *
+   * ```js
+   * pb.collection("example").getFirstListItem(pb.filter(
+   *    'title ~ {:title} && created >= {:created}',
+   *    { title: "example", created: new Date()}
+   * ))
+   * ```
+   */
+  filter(i, e) {
+    if (!e)
+      return i;
+    for (let t in e) {
+      let s = e[t];
+      switch (typeof s) {
+        case "boolean":
+        case "number":
+          s = "" + s;
+          break;
+        case "string":
+          s = "'" + s.replace(/'/g, "\\'") + "'";
+          break;
+        default:
+          s === null ? s = "null" : s instanceof Date ? s = "'" + s.toISOString().replace("T", " ") + "'" : s = "'" + JSON.stringify(s).replace(/'/g, "\\'") + "'";
+      }
+      i = i.replaceAll("{:" + t + "}", s);
+    }
+    return i;
+  }
+  /**
+   * Legacy alias of `pb.files.getUrl()`.
+   */
+  getFileUrl(i, e, t = {}) {
+    return this.files.getUrl(i, e, t);
+  }
+  /**
+   * Builds a full client url by safely concatenating the provided path.
+   */
+  buildUrl(i) {
+    var t;
+    let e = this.baseUrl;
+    return typeof window < "u" && window.location && !e.startsWith("https://") && !e.startsWith("http://") && (e = (t = window.location.origin) != null && t.endsWith("/") ? window.location.origin.substring(0, window.location.origin.length - 1) : window.location.origin || "", this.baseUrl.startsWith("/") || (e += window.location.pathname || "/", e += e.endsWith("/") ? "" : "/"), e += this.baseUrl), i && (e += e.endsWith("/") ? "" : "/", e += i.startsWith("/") ? i.substring(1) : i), e;
+  }
+  /**
+   * Sends an api http request.
+   *
+   * @throws {ClientResponseError}
+   */
+  async send(i, e) {
+    e = this.initSendOptions(i, e);
+    let t = this.buildUrl(i);
+    if (this.beforeSend) {
+      const n = Object.assign({}, await this.beforeSend(t, e));
+      typeof n.url < "u" || typeof n.options < "u" ? (t = n.url || t, e = n.options || e) : Object.keys(n).length && (e = n, console != null && console.warn && console.warn(
+        "Deprecated format of beforeSend return: please use `return { url, options }`, instead of `return options`."
+      ));
+    }
+    if (typeof e.query < "u") {
+      const n = this.serializeQueryParams(e.query);
+      n && (t += (t.includes("?") ? "&" : "?") + n), delete e.query;
+    }
+    return this.getHeader(e.headers, "Content-Type") == "application/json" && e.body && typeof e.body != "string" && (e.body = JSON.stringify(e.body)), (e.fetch || fetch)(t, e).then(async (n) => {
+      let r = {};
+      try {
+        r = await n.json();
+      } catch {
+      }
+      if (this.afterSend && (r = await this.afterSend(n, r)), n.status >= 400)
+        throw new f({
+          url: n.url,
+          status: n.status,
+          data: r
+        });
+      return r;
+    }).catch((n) => {
+      throw new f(n);
+    });
+  }
+  /**
+   * Shallow copy the provided object and takes care to initialize
+   * any options required to preserve the backward compatability.
+   *
+   * @param  {SendOptions} options
+   * @return {SendOptions}
+   */
+  initSendOptions(i, e) {
+    if (e = Object.assign({ method: "GET" }, e), e.body = this.convertToFormDataIfNeeded(e.body), q(e), e.query = Object.assign({}, e.params, e.query), typeof e.requestKey > "u" && (e.$autoCancel === !1 || e.query.$autoCancel === !1 ? e.requestKey = null : (e.$cancelKey || e.query.$cancelKey) && (e.requestKey = e.$cancelKey || e.query.$cancelKey)), delete e.$autoCancel, delete e.query.$autoCancel, delete e.$cancelKey, delete e.query.$cancelKey, this.getHeader(e.headers, "Content-Type") === null && !this.isFormData(e.body) && (e.headers = Object.assign({}, e.headers, {
+      "Content-Type": "application/json"
+    })), this.getHeader(e.headers, "Accept-Language") === null && (e.headers = Object.assign({}, e.headers, {
+      "Accept-Language": this.lang
+    })), // has valid token
+    this.authStore.token && // auth header is not explicitly set
+    this.getHeader(e.headers, "Authorization") === null && (e.headers = Object.assign({}, e.headers, {
+      Authorization: this.authStore.token
+    })), this.enableAutoCancellation && e.requestKey !== null) {
+      const t = e.requestKey || (e.method || "GET") + i;
+      delete e.requestKey, this.cancelRequest(t);
+      const s = new AbortController();
+      this.cancelControllers[t] = s, e.signal = s.signal;
+    }
+    return e;
+  }
+  /**
+   * Converts analyzes the provided body and converts it to FormData
+   * in case a plain object with File/Blob values is used.
+   */
+  convertToFormDataIfNeeded(i) {
+    if (typeof FormData > "u" || typeof i > "u" || typeof i != "object" || i === null || this.isFormData(i) || !this.hasBlobField(i))
+      return i;
+    const e = new FormData();
+    for (const t in i) {
+      const s = i[t];
+      if (typeof s == "object" && !this.hasBlobField({ data: s })) {
+        let n = {};
+        n[t] = s, e.append("@jsonPayload", JSON.stringify(n));
+      } else {
+        const n = Array.isArray(s) ? s : [s];
+        for (let r of n)
+          e.append(t, r);
+      }
+    }
+    return e;
+  }
+  /**
+   * Checks if the submitted body object has at least one Blob/File field.
+   */
+  hasBlobField(i) {
+    for (const e in i) {
+      const t = Array.isArray(i[e]) ? i[e] : [i[e]];
+      for (const s of t)
+        if (typeof Blob < "u" && s instanceof Blob || typeof File < "u" && s instanceof File)
+          return !0;
+    }
+    return !1;
+  }
+  /**
+   * Extracts the header with the provided name in case-insensitive manner.
+   * Returns `null` if no header matching the name is found.
+   */
+  getHeader(i, e) {
+    i = i || {}, e = e.toLowerCase();
+    for (let t in i)
+      if (t.toLowerCase() == e)
+        return i[t];
+    return null;
+  }
+  /**
+   * Loosely checks if the specified body is a FormData instance.
+   */
+  isFormData(i) {
+    return i && // we are checking the constructor name because FormData
+    // is not available natively in some environments and the
+    // polyfill(s) may not be globally accessible
+    (i.constructor.name === "FormData" || // fallback to global FormData instance check
+    // note: this is needed because the constructor.name could be different in case of
+    //       custom global FormData implementation, eg. React Native on Android/iOS
+    typeof FormData < "u" && i instanceof FormData);
+  }
+  /**
+   * Serializes the provided query parameters into a query string.
+   */
+  serializeQueryParams(i) {
+    const e = [];
+    for (const t in i) {
+      if (i[t] === null)
+        continue;
+      const s = i[t], n = encodeURIComponent(t);
+      if (Array.isArray(s))
+        for (const r of s)
+          e.push(n + "=" + encodeURIComponent(r));
+      else
+        s instanceof Date ? e.push(n + "=" + encodeURIComponent(s.toISOString())) : typeof s !== null && typeof s == "object" ? e.push(n + "=" + encodeURIComponent(JSON.stringify(s))) : e.push(n + "=" + encodeURIComponent(s));
+    }
+    return e.join("&");
+  }
+}
+class ie extends R {
   constructor(e) {
     super();
-    u(this, "saveFunc");
-    u(this, "clearFunc");
-    u(this, "queue", []);
+    l(this, "saveFunc");
+    l(this, "clearFunc");
+    l(this, "queue", []);
     this.saveFunc = e.save, this.clearFunc = e.clear, this._enqueue(() => this._loadInitial(e.initial));
   }
   /**
@@ -1545,13 +2068,13 @@ class Z extends R {
    */
   save(e, t) {
     super.save(e, t);
-    let i = "";
+    let s = "";
     try {
-      i = JSON.stringify({ token: e, model: t });
+      s = JSON.stringify({ token: e, model: t });
     } catch {
       console.warn("AsyncAuthStore: failed to stringify the new state");
     }
-    this._enqueue(() => this.saveFunc(i));
+    this._enqueue(() => this.saveFunc(s));
   }
   /**
    * @inheritdoc
@@ -1587,20 +2110,21 @@ class Z extends R {
   }
 }
 export {
-  z as AdminService,
-  Z as AsyncAuthStore,
+  G as AdminService,
+  ie as AsyncAuthStore,
   R as BaseAuthStore,
-  m as ClientResponseError,
-  $ as CollectionService,
+  te as Client,
+  f as ClientResponseError,
+  M as CollectionService,
   T as CrudService,
-  X as HealthService,
-  H as LocalAuthStore,
-  Y as LogService,
-  J as RealtimeService,
-  Q as RecordService,
-  j as cookieParse,
-  k as cookieSerialize,
-  g as getTokenPayload,
-  I as isTokenExpired,
-  V as normalizeUnknownQueryParams
+  Y as HealthService,
+  $ as LocalAuthStore,
+  Q as LogService,
+  A as RealtimeService,
+  z as RecordService,
+  F as cookieParse,
+  v as cookieSerialize,
+  w as getTokenPayload,
+  E as isTokenExpired,
+  q as normalizeUnknownQueryParams
 };

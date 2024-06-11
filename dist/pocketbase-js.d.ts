@@ -352,7 +352,7 @@ export declare interface BeforeSendResult {
 /**
  * PocketBase JS Client.
  */
-declare class Client {
+export declare class Client {
     /**
      * The base PocketBase backend url address (eg. 'http://127.0.0.1.8090').
      */
