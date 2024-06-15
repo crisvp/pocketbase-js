@@ -97,7 +97,7 @@ export class AdminService extends CrudService<AdminModel> {
     async authWithPassword(
         email: string,
         password: string,
-        options: AuthOptions,
+        options: AuthOptions = {},
     ): Promise<AdminAuthResponse> {
         const autoRefreshThreshold = options.autoRefreshThreshold;
         delete options.autoRefreshThreshold;
