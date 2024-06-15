@@ -3,8 +3,8 @@ import { SendOptions } from "@/services/utils/options";
 export function normalizeLegacyOptionsArgs(
     legacyWarn: string,
     baseOptions: SendOptions,
-    bodyOrOptions?: any,
-    query?: any,
+    bodyOrOptions?: unknown,
+    query?: Record<string, unknown>,
 ): SendOptions {
     const hasBodyOrOptions = typeof bodyOrOptions !== "undefined";
     const hasQuery = typeof query !== "undefined";

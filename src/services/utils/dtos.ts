@@ -3,12 +3,10 @@ export interface ListResult<T> {
     perPage: number;
     totalItems: number;
     totalPages: number;
-    items: Array<T>;
+    items: T[];
 }
 
-export interface BaseModel {
-    [key: string]: any;
-
+export interface BaseModel extends Record<string, unknown> {
     id: string;
     created: string;
     updated: string;
@@ -26,21 +24,21 @@ export interface SchemaField {
     system: boolean;
     required: boolean;
     presentable: boolean;
-    options: { [key: string]: any };
+    options: Record<string, unknown>;
 }
 
 export interface CollectionModel extends BaseModel {
     name: string;
     type: string;
-    schema: Array<SchemaField>;
-    indexes: Array<string>;
+    schema: SchemaField[];
+    indexes: string[];
     system: boolean;
     listRule?: string;
     viewRule?: string;
     createRule?: string;
     updateRule?: string;
     deleteRule?: string;
-    options: { [key: string]: any };
+    options: Record<string, unknown>;
 }
 
 export interface ExternalAuthModel extends BaseModel {
@@ -53,11 +51,11 @@ export interface ExternalAuthModel extends BaseModel {
 export interface LogModel extends BaseModel {
     level: string;
     message: string;
-    data: { [key: string]: any };
+    data: Record<string, unknown>;
 }
 
 export interface RecordModel extends BaseModel {
     collectionId: string;
     collectionName: string;
-    expand?: { [key: string]: any };
+    expand?: Record<string, unknown>;
 }

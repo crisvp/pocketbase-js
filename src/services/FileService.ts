@@ -1,12 +1,13 @@
 import { BaseService } from "@/services/utils/BaseService";
 import { CommonOptions, FileOptions } from "@/services/utils/options";
+import { RecordModel } from "./utils/dtos";
 
 export class FileService extends BaseService {
     /**
      * Builds and returns an absolute record file url for the provided filename.
      */
     getUrl(
-        record: { [key: string]: any },
+        record: RecordModel,
         filename: string,
         queryParams: FileOptions = {},
     ): string {
@@ -33,7 +34,11 @@ export class FileService extends BaseService {
                 delete queryParams.download;
             }
 
-            const params = new URLSearchParams(queryParams);
+            const p = Object.entries(queryParams).map(([key, value]) => [
+                key,
+                typeof value === "string" ? value : JSON.stringify(value),
+            ]);
+            const params = new URLSearchParams(p);
 
             result += (result.includes("?") ? "&" : "?") + params;
         }

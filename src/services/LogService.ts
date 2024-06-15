@@ -1,7 +1,11 @@
 import { ClientResponseError } from "@/ClientResponseError";
 import { BaseService } from "@/services/utils/BaseService";
 import { ListResult, LogModel } from "@/services/utils/dtos";
-import { CommonOptions, ListOptions, LogStatsOptions } from "@/services/utils/options";
+import {
+    CommonOptions,
+    ListOptions,
+    LogStatsOptions,
+} from "@/services/utils/options";
 
 export interface HourlyStats {
     total: number;
@@ -67,7 +71,7 @@ export class LogService extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async getStats(options?: LogStatsOptions): Promise<Array<HourlyStats>> {
+    async getStats(options?: LogStatsOptions): Promise<HourlyStats[]> {
         options = Object.assign(
             {
                 method: "GET",

@@ -4,7 +4,7 @@ import { CommonOptions } from "@/services/utils/options";
 export interface HealthCheckResponse {
     code: number;
     message: string;
-    data: { [key: string]: any };
+    data: Record<string, unknown>;
 }
 
 export class HealthService extends BaseService {

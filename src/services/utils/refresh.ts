@@ -2,15 +2,17 @@ import Client from "@/Client";
 import { isTokenExpired } from "@/stores/utils/jwt";
 
 // reset previous auto refresh registrations
-export function resetAutoRefresh(client: Client) {
-    (client as any)._resetAutoRefresh?.();
+export function resetAutoRefresh(
+    client: Client & { _resetAutoRefresh?: () => void },
+) {
+    client._resetAutoRefresh?.();
 }
 
 export function registerAutoRefresh(
-    client: Client,
+    client: Client & { _resetAutoRefresh?: () => void },
     threshold: number,
-    refreshFunc: () => Promise<any>,
-    reauthenticateFunc: () => Promise<any>,
+    refreshFunc: () => Promise<unknown>,
+    reauthenticateFunc: () => Promise<unknown>,
 ) {
     resetAutoRefresh(client);
 
@@ -32,17 +34,19 @@ export function registerAutoRefresh(
     });
 
     // initialize a reset function and attach it dynamically to the client
-    (client as any)._resetAutoRefresh = function () {
+    client._resetAutoRefresh = function () {
         unsubStoreChange();
         client.beforeSend = oldBeforeSend;
-        delete (client as any)._resetAutoRefresh;
+        delete client._resetAutoRefresh;
     };
 
     client.beforeSend = async (url, sendOptions) => {
         const oldToken = client.authStore.token;
 
         if (sendOptions.query?.autoRefresh) {
-            return oldBeforeSend ? oldBeforeSend(url, sendOptions) : { url, sendOptions };
+            return oldBeforeSend
+                ? oldBeforeSend(url, sendOptions)
+                : { url, sendOptions };
         }
 
         let isValid = client.authStore.isValid;
@@ -66,7 +70,7 @@ export function registerAutoRefresh(
 
         // the request wasn't sent with a custom token
         const headers = sendOptions.headers || {};
-        for (let key in headers) {
+        for (const key in headers) {
             if (
                 key.toLowerCase() == "authorization" &&
                 // the request wasn't sent with a custom token
@@ -80,6 +84,8 @@ export function registerAutoRefresh(
         }
         sendOptions.headers = headers;
 
-        return oldBeforeSend ? oldBeforeSend(url, sendOptions) : { url, sendOptions };
+        return oldBeforeSend
+            ? oldBeforeSend(url, sendOptions)
+            : { url, sendOptions };
     };
 }

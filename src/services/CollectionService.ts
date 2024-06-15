@@ -6,9 +6,7 @@ export class CollectionService extends CrudService<CollectionModel> {
     /**
      * @inheritdoc
      */
-    get baseCrudPath(): string {
-        return "/api/collections";
-    }
+    readonly baseCrudPath = "/api/collections";
 
     /**
      * Imports the provided collections.
@@ -20,8 +18,8 @@ export class CollectionService extends CrudService<CollectionModel> {
      * @throws {ClientResponseError}
      */
     async import(
-        collections: Array<CollectionModel>,
-        deleteMissing: boolean = false,
+        collections: CollectionModel[],
+        deleteMissing = false,
         options?: CommonOptions,
     ): Promise<true> {
         options = Object.assign(
@@ -35,6 +33,8 @@ export class CollectionService extends CrudService<CollectionModel> {
             options,
         );
 
-        return this.client.send(this.baseCrudPath + "/import", options).then(() => true);
+        return this.client
+            .send(this.baseCrudPath + "/import", options)
+            .then(() => true);
     }
 }

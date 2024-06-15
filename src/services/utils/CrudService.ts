@@ -1,9 +1,15 @@
 import { BaseService } from "@/services/utils/BaseService";
 import { ClientResponseError } from "@/ClientResponseError";
 import { ListResult } from "@/services/utils/dtos";
-import { CommonOptions, ListOptions, FullListOptions } from "@/services/utils/options";
+import {
+    CommonOptions,
+    ListOptions,
+    FullListOptions,
+} from "@/services/utils/options";
 
-export abstract class CrudService<M> extends BaseService {
+export abstract class CrudService<
+    M extends Record<string, unknown>,
+> extends BaseService {
     /**
      * Base path for the crud actions (without trailing slash, eg. '/admins').
      */
@@ -12,8 +18,8 @@ export abstract class CrudService<M> extends BaseService {
     /**
      * Response data decoder.
      */
-    decode<T = M>(data: { [key: string]: any }): T {
-        return data as T;
+    decode<T extends Record<string, unknown> = M>(data: T): T {
+        return data;
     }
 
     /**
@@ -24,17 +30,20 @@ export abstract class CrudService<M> extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async getFullList<T = M>(options?: FullListOptions): Promise<Array<T>>;
+    async getFullList<T = M>(options?: FullListOptions): Promise<T[]>;
 
     /**
      * Legacy version of getFullList with explicitly specified batch size.
      */
-    async getFullList<T = M>(batch?: number, options?: ListOptions): Promise<Array<T>>;
-
-    async getFullList<T = M>(
-        batchOrqueryParams?: number | FullListOptions,
+    async getFullList<T extends Record<string, unknown> = M>(
+        batch?: number,
         options?: ListOptions,
-    ): Promise<Array<T>> {
+    ): Promise<T[]>;
+
+    async getFullList<T extends Record<string, unknown> = M>(
+        batchOrqueryParams?: number | FullListOptions,
+        options?: FullListOptions,
+    ): Promise<T[]> {
         if (typeof batchOrqueryParams == "number") {
             return this._getFullList<T>(batchOrqueryParams, options);
         }
@@ -57,7 +66,7 @@ export abstract class CrudService<M> extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async getList<T = M>(
+    async getList<T extends Record<string, unknown> = M>(
         page = 1,
         perPage = 30,
         options?: ListOptions,
@@ -77,14 +86,16 @@ export abstract class CrudService<M> extends BaseService {
             options.query,
         );
 
-        return this.client.send(this.baseCrudPath, options).then((responseData: any) => {
-            responseData.items =
-                responseData.items?.map((item: any) => {
-                    return this.decode<T>(item);
-                }) || [];
+        return this.client
+            .send(this.baseCrudPath, options)
+            .then((responseData: ListResult<T>) => {
+                responseData.items =
+                    responseData.items?.map((item) => {
+                        return this.decode<T>(item);
+                    }) || [];
 
-            return responseData;
-        });
+                return responseData;
+            });
     }
 
     /**
@@ -100,7 +111,10 @@ export abstract class CrudService<M> extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async getFirstListItem<T = M>(filter: string, options?: CommonOptions): Promise<T> {
+    async getFirstListItem<T extends Record<string, unknown> = M>(
+        filter: string,
+        options?: CommonOptions,
+    ): Promise<T> {
         options = Object.assign(
             {
                 requestKey: "one_by_filter_" + this.baseCrudPath + "_" + filter,
@@ -141,7 +155,10 @@ export abstract class CrudService<M> extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async getOne<T = M>(id: string, options?: CommonOptions): Promise<T> {
+    async getOne<T extends Record<string, unknown> = M>(
+        id: string,
+        options?: CommonOptions,
+    ): Promise<T> {
         if (!id) {
             throw new ClientResponseError({
                 url: this.client.buildUrl(this.baseCrudPath + "/"),
@@ -163,7 +180,7 @@ export abstract class CrudService<M> extends BaseService {
 
         return this.client
             .send(this.baseCrudPath + "/" + encodeURIComponent(id), options)
-            .then((responseData: any) => this.decode<T>(responseData));
+            .then((responseData) => this.decode<T>(responseData));
     }
 
     /**
@@ -173,8 +190,8 @@ export abstract class CrudService<M> extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async create<T = M>(
-        bodyParams?: { [key: string]: any } | FormData,
+    async create<T extends Record<string, unknown> = M>(
+        bodyParams?: Record<string, unknown> | FormData,
         options?: CommonOptions,
     ): Promise<T> {
         options = Object.assign(
@@ -187,7 +204,7 @@ export abstract class CrudService<M> extends BaseService {
 
         return this.client
             .send(this.baseCrudPath, options)
-            .then((responseData: any) => this.decode<T>(responseData));
+            .then((responseData) => this.decode<T>(responseData));
     }
 
     /**
@@ -197,9 +214,9 @@ export abstract class CrudService<M> extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async update<T = M>(
+    async update<T extends M = M>(
         id: string,
-        bodyParams?: { [key: string]: any } | FormData,
+        bodyParams?: Record<string, unknown> | FormData,
         options?: CommonOptions,
     ): Promise<T> {
         options = Object.assign(
@@ -212,7 +229,7 @@ export abstract class CrudService<M> extends BaseService {
 
         return this.client
             .send(this.baseCrudPath + "/" + encodeURIComponent(id), options)
-            .then((responseData: any) => this.decode<T>(responseData));
+            .then((responseData) => this.decode<T>(responseData));
     }
 
     /**
@@ -236,10 +253,10 @@ export abstract class CrudService<M> extends BaseService {
     /**
      * Returns a promise with all list items batch fetched at once.
      */
-    protected _getFullList<T = M>(
+    protected _getFullList<T extends Record<string, unknown> = M>(
         batchSize = 500,
         options?: ListOptions,
-    ): Promise<Array<T>> {
+    ): Promise<T[]> {
         options = options || {};
         options.query = Object.assign(
             {
@@ -248,12 +265,11 @@ export abstract class CrudService<M> extends BaseService {
             options.query,
         );
 
-        let result: Array<T> = [];
+        let result: T[] = [];
 
-        let request = async (page: number): Promise<Array<any>> => {
-            return this.getList(page, batchSize || 500, options).then((list) => {
-                const castedList = list as any as ListResult<T>;
-                const items = castedList.items;
+        const request = async (page: number): Promise<T[]> => {
+            return this.getList<T>(page, batchSize || 500, options).then((list) => {
+                const items = list.items;
 
                 result = result.concat(items);
 

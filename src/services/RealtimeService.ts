@@ -3,29 +3,27 @@ import { BaseService } from "@/services/utils/BaseService";
 import { SendOptions, normalizeUnknownQueryParams } from "@/services/utils/options";
 
 interface promiseCallbacks {
-    resolve: Function;
-    reject: Function;
+    resolve: (value: void | PromiseLike<void>) => void;
+    reject: (...args: unknown[]) => void;
 }
 
-type Subscriptions = { [key: string]: Array<EventListener> };
+type Subscriptions = Record<string, EventListener[]>;
 
 export type UnsubscribeFunc = () => Promise<void>;
 
 export class RealtimeService extends BaseService {
-    clientId: string = "";
+    clientId = "";
 
     private eventSource: EventSource | null = null;
     private subscriptions: Subscriptions = {};
-    private lastSentSubscriptions: Array<string> = [];
-    private connectTimeoutId: any;
-    private maxConnectTimeout: number = 15000;
-    private reconnectTimeoutId: any;
-    private reconnectAttempts: number = 0;
-    private maxReconnectAttempts: number = Infinity;
-    private predefinedReconnectIntervals: Array<number> = [
-        200, 300, 500, 1000, 1200, 1500, 2000,
-    ];
-    private pendingConnects: Array<promiseCallbacks> = [];
+    private lastSentSubscriptions: string[] = [];
+    private connectTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    private maxConnectTimeout = 15000;
+    private reconnectTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    private reconnectAttempts = 0;
+    private maxReconnectAttempts = Infinity;
+    private predefinedReconnectIntervals = [200, 300, 500, 1000, 1200, 1500, 2000];
+    private pendingConnects: promiseCallbacks[] = [];
 
     /**
      * Returns whether the realtime connection has been established.
@@ -44,7 +42,7 @@ export class RealtimeService extends BaseService {
      */
     async subscribe(
         topic: string,
-        callback: (data: any) => void,
+        callback: (data: unknown) => void,
         options?: SendOptions,
     ): Promise<UnsubscribeFunc> {
         if (!topic) {
@@ -59,7 +57,10 @@ export class RealtimeService extends BaseService {
             const serialized =
                 "options=" +
                 encodeURIComponent(
-                    JSON.stringify({ query: options.query, headers: options.headers }),
+                    JSON.stringify({
+                        query: options.query,
+                        headers: options.headers,
+                    }),
                 );
             key += (key.includes("?") ? "&" : "?") + serialized;
         }
@@ -70,7 +71,9 @@ export class RealtimeService extends BaseService {
             let data;
             try {
                 data = JSON.parse(msgEvent?.data);
-            } catch {}
+            } catch {
+                /* ignore */
+            }
 
             callback(data || {});
         };
@@ -117,14 +120,15 @@ export class RealtimeService extends BaseService {
         } else {
             // remove all listeners related to the topic
             const subs = this.getSubscriptionsByTopic(topic);
-            for (let key in subs) {
+            for (const key in subs) {
                 if (!this.hasSubscriptionListeners(key)) {
                     continue; // already unsubscribed
                 }
 
-                for (let listener of this.subscriptions[key]) {
+                for (const listener of this.subscriptions[key]) {
                     this.eventSource?.removeEventListener(key, listener);
                 }
+                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
                 delete this.subscriptions[key];
 
                 // mark for subscriptions change submit if there are no other listeners
@@ -152,16 +156,17 @@ export class RealtimeService extends BaseService {
      */
     async unsubscribeByPrefix(keyPrefix: string): Promise<void> {
         let hasAtleastOneTopic = false;
-        for (let key in this.subscriptions) {
+        for (const key in this.subscriptions) {
             // "?" so that it can be used as end delimiter for the prefix
             if (!(key + "?").startsWith(keyPrefix)) {
                 continue;
             }
 
             hasAtleastOneTopic = true;
-            for (let listener of this.subscriptions[key]) {
+            for (const listener of this.subscriptions[key]) {
                 this.eventSource?.removeEventListener(key, listener);
             }
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete this.subscriptions[key];
         }
 
@@ -194,7 +199,7 @@ export class RealtimeService extends BaseService {
         let needToSubmit = false;
 
         const subs = this.getSubscriptionsByTopic(topic);
-        for (let key in subs) {
+        for (const key in subs) {
             if (
                 !Array.isArray(this.subscriptions[key]) ||
                 !this.subscriptions[key].length
@@ -209,6 +214,7 @@ export class RealtimeService extends BaseService {
                 }
 
                 exist = true; // has at least one matching listener
+                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
                 delete this.subscriptions[key][i]; // removes the function reference
                 this.subscriptions[key].splice(i, 1); // reindex the array
                 this.eventSource?.removeEventListener(key, listener);
@@ -219,6 +225,7 @@ export class RealtimeService extends BaseService {
 
             // remove the key from the subscriptions list if there are no other listeners
             if (!this.subscriptions[key].length) {
+                // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
                 delete this.subscriptions[key];
             }
 
@@ -245,8 +252,8 @@ export class RealtimeService extends BaseService {
         }
 
         // check for at least one non-empty subscription
-        for (let key in this.subscriptions) {
-            if (!!this.subscriptions[key]?.length) {
+        for (const key in this.subscriptions) {
+            if (this.subscriptions[key]?.length) {
                 return true;
             }
         }
@@ -267,10 +274,10 @@ export class RealtimeService extends BaseService {
         return this.client
             .send("/api/realtime", {
                 method: "POST",
-                body: {
+                body: JSON.stringify({
                     clientId: this.clientId,
                     subscriptions: this.lastSentSubscriptions,
-                },
+                }),
                 requestKey: this.getSubscriptionsCancelKey(),
             })
             .catch((err) => {
@@ -291,7 +298,7 @@ export class RealtimeService extends BaseService {
         // "?" so that it can be used as end delimiter for the topic
         topic = topic.includes("?") ? topic : topic + "?";
 
-        for (let key in this.subscriptions) {
+        for (const key in this.subscriptions) {
             if ((key + "?").startsWith(topic)) {
                 result[key] = this.subscriptions[key];
             }
@@ -300,10 +307,10 @@ export class RealtimeService extends BaseService {
         return result;
     }
 
-    private getNonEmptySubscriptionKeys(): Array<string> {
-        const result: Array<string> = [];
+    private getNonEmptySubscriptionKeys(): string[] {
+        const result: string[] = [];
 
-        for (let key in this.subscriptions) {
+        for (const key in this.subscriptions) {
             if (this.subscriptions[key].length) {
                 result.push(key);
             }
@@ -319,8 +326,8 @@ export class RealtimeService extends BaseService {
 
         this.removeAllSubscriptionListeners();
 
-        for (let key in this.subscriptions) {
-            for (let listener of this.subscriptions[key]) {
+        for (const key in this.subscriptions) {
+            for (const listener of this.subscriptions[key]) {
                 this.eventSource.addEventListener(key, listener);
             }
         }
@@ -331,8 +338,8 @@ export class RealtimeService extends BaseService {
             return;
         }
 
-        for (let key in this.subscriptions) {
-            for (let listener of this.subscriptions[key]) {
+        for (const key in this.subscriptions) {
+            for (const listener of this.subscriptions[key]) {
                 this.eventSource.removeEventListener(key, listener);
             }
         }
@@ -345,7 +352,7 @@ export class RealtimeService extends BaseService {
             return;
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             this.pendingConnects.push({ resolve, reject });
 
             if (this.pendingConnects.length > 1) {
@@ -363,12 +370,14 @@ export class RealtimeService extends BaseService {
         // wait up to 15s for connect
         clearTimeout(this.connectTimeoutId);
         this.connectTimeoutId = setTimeout(() => {
-            this.connectErrorHandler(new Error("EventSource connect took too long."));
+            this.connectErrorHandler(
+                new Error("EventSource connect took too long."),
+            );
         }, this.maxConnectTimeout);
 
         this.eventSource = new EventSource(this.client.buildUrl("/api/realtime"));
 
-        this.eventSource.onerror = (_) => {
+        this.eventSource.onerror = () => {
             this.connectErrorHandler(
                 new Error("Failed to establish realtime connection."),
             );
@@ -392,7 +401,7 @@ export class RealtimeService extends BaseService {
                     }
                 })
                 .then(() => {
-                    for (let p of this.pendingConnects) {
+                    for (const p of this.pendingConnects) {
                         p.resolve();
                     }
 
@@ -404,8 +413,8 @@ export class RealtimeService extends BaseService {
 
                     // propagate the PB_CONNECT event
                     const connectSubs = this.getSubscriptionsByTopic("PB_CONNECT");
-                    for (let key in connectSubs) {
-                        for (let listener of connectSubs[key]) {
+                    for (const key in connectSubs) {
+                        for (const listener of connectSubs[key]) {
                             listener(e);
                         }
                     }
@@ -432,7 +441,7 @@ export class RealtimeService extends BaseService {
         return false;
     }
 
-    private connectErrorHandler(err: any) {
+    private connectErrorHandler(err: unknown) {
         clearTimeout(this.connectTimeoutId);
         clearTimeout(this.reconnectTimeoutId);
 
@@ -442,7 +451,7 @@ export class RealtimeService extends BaseService {
             // was previously connected but the max reconnection limit has been reached
             this.reconnectAttempts > this.maxReconnectAttempts
         ) {
-            for (let p of this.pendingConnects) {
+            for (const p of this.pendingConnects) {
                 p.reject(new ClientResponseError(err));
             }
             this.pendingConnects = [];
@@ -480,7 +489,7 @@ export class RealtimeService extends BaseService {
             // this is done to avoid unnecessary throwing errors in case
             // unsubscribe is called before the pending connect promises complete
             // (see https://github.com/pocketbase/pocketbase/discussions/2897#discussioncomment-6423818)
-            for (let p of this.pendingConnects) {
+            for (const p of this.pendingConnects) {
                 p.resolve();
             }
             this.pendingConnects = [];

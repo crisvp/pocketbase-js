@@ -2,7 +2,7 @@ export interface SendOptions extends RequestInit {
     // for backward compatibility and to minimize the verbosity,
     // any top-level field that doesn't exist in RequestInit or the
     // fields below will be treated as query parameter.
-    [key: string]: any;
+    [key: string]: unknown;
 
     /**
      * Optional custom fetch function to use for sending the request.
@@ -12,17 +12,17 @@ export interface SendOptions extends RequestInit {
     /**
      * Custom headers to send with the requests.
      */
-    headers?: { [key: string]: string };
+    headers?: Record<string, string>;
 
     /**
      * The body of the request (serialized automatically for json requests).
      */
-    body?: any;
+    body?: BodyInit | null;
 
     /**
      * Query parameters that will be appended to the request url.
      */
-    query?: { [key: string]: any };
+    query?: Record<string, unknown>;
 
     /**
      * @deprecated use `query` instead
@@ -30,7 +30,7 @@ export interface SendOptions extends RequestInit {
      * for backward-compatibility `params` values are merged with `query`,
      * but this option may get removed in the final v1 release
      */
-    params?: { [key: string]: any };
+    params?: Record<string, unknown>;
 
     /**
      * The request identifier that can be used to cancel pending requests.
@@ -132,12 +132,13 @@ export function normalizeUnknownQueryParams(options?: SendOptions): void {
     }
 
     options.query = options.query || {};
-    for (let key in options) {
+    for (const key in options) {
         if (knownSendOptionsKeys.includes(key)) {
             continue;
         }
 
         options.query[key] = options[key];
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
         delete options[key];
     }
 }

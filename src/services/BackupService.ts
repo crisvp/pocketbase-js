@@ -13,7 +13,7 @@ export class BackupService extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async getFullList(options?: CommonOptions): Promise<Array<BackupFileInfo>> {
+    async getFullList(options?: CommonOptions): Promise<BackupFileInfo[]> {
         options = Object.assign(
             {
                 method: "GET",
@@ -57,7 +57,7 @@ export class BackupService extends BaseService {
      * @throws {ClientResponseError}
      */
     async upload(
-        bodyParams: { [key: string]: any } | FormData,
+        bodyParams: Record<string, unknown> | FormData,
         options?: CommonOptions,
     ): Promise<boolean> {
         options = Object.assign(

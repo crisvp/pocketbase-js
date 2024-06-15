@@ -134,42 +134,12 @@ describe("AdminService", function () {
     });
 
     describe("authWithPassword()", function () {
-        test("(legacy) Should auth an admin by its email and password", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/auth-with-password") + "?q1=456",
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                    b1: 123,
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: "token_authorize",
-                    admin: { id: "id_authorize" },
-                },
-            });
-
-            const result = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                { b1: 123 },
-                { q1: 456 },
-            );
-
-            authResponseCheck(
-                result,
-                "token_authorize",
-                service.decode({ id: "id_authorize" }),
-            );
-        });
-
         test("Should auth an admin by its email and password", async function () {
             fetchMock.on({
                 method: "POST",
                 url:
-                    service.client.buildUrl("/api/admins/auth-with-password") + "?q1=456",
+                    service.client.buildUrl("/api/admins/auth-with-password") +
+                    "?q1=456",
                 body: {
                     identity: "test@example.com",
                     password: "123456",
@@ -184,10 +154,14 @@ describe("AdminService", function () {
                 },
             });
 
-            const result = await service.authWithPassword("test@example.com", "123456", {
-                q1: 456,
-                headers: { "x-test": "123" },
-            });
+            const result = await service.authWithPassword(
+                "test@example.com",
+                "123456",
+                {
+                    q1: 456,
+                    headers: { "x-test": "123" },
+                },
+            );
 
             authResponseCheck(
                 result,
@@ -198,27 +172,6 @@ describe("AdminService", function () {
     });
 
     describe("authRefresh()", function () {
-        test("(legacy) Should refresh an authorized admin instance", async function () {
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh") + "?q1=456",
-                body: { b1: 123 },
-                replyCode: 200,
-                replyBody: {
-                    token: "token_refresh",
-                    admin: { id: "id_refresh" },
-                },
-            });
-
-            const result = await service.authRefresh({ b1: 123 }, { q1: 456 });
-
-            authResponseCheck(
-                result,
-                "token_refresh",
-                service.decode({ id: "id_refresh" }),
-            );
-        });
-
         test("Should refresh an authorized admin instance", async function () {
             fetchMock.on({
                 method: "POST",
@@ -247,29 +200,6 @@ describe("AdminService", function () {
     });
 
     describe("requestPasswordReset()", function () {
-        test("(legacy) Should send a password reset request", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/request-password-reset") +
-                    "?q1=456",
-                body: {
-                    email: "test@example.com",
-                    b1: 123,
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
-
-            const result = await service.requestPasswordReset(
-                "test@example.com",
-                { b1: 123 },
-                { q1: 456 },
-            );
-
-            assert.isTrue(result);
-        });
-
         test("Should send a password reset request", async function () {
             fetchMock.on({
                 method: "POST",
@@ -296,33 +226,6 @@ describe("AdminService", function () {
     });
 
     describe("confirmPasswordReset()", function () {
-        test("(legacy) Should confirm a password reset request", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/confirm-password-reset") +
-                    "?q1=456",
-                body: {
-                    token: "test",
-                    password: "123",
-                    passwordConfirm: "456",
-                    b1: 123,
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
-
-            const result = await service.confirmPasswordReset(
-                "test",
-                "123",
-                "456",
-                { b1: 123 },
-                { q1: 456 },
-            );
-
-            assert.isTrue(result);
-        });
-
         test("Should confirm a password reset request", async function () {
             fetchMock.on({
                 method: "POST",
@@ -548,7 +451,9 @@ describe("AdminService", function () {
 
             fetchMock.on({
                 method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh?autoRefresh=true"),
+                url: service.client.buildUrl(
+                    "/api/admins/auth-refresh?autoRefresh=true",
+                ),
                 additionalMatcher: (_, config) => {
                     assert.equal(config?.headers?.["Authorization"], token);
                     invokes.push("auto-auth-refresh");
@@ -631,7 +536,9 @@ describe("AdminService", function () {
 
             fetchMock.on({
                 method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh?autoRefresh=true"),
+                url: service.client.buildUrl(
+                    "/api/admins/auth-refresh?autoRefresh=true",
+                ),
                 additionalMatcher: (_, config) => {
                     assert.equal(config?.headers?.["Authorization"], token);
                     invokes.push("auto-auth-refresh");
@@ -733,7 +640,9 @@ describe("AdminService", function () {
             // shouldn't be invoked!
             fetchMock.on({
                 method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh?autoRefresh=true"),
+                url: service.client.buildUrl(
+                    "/api/admins/auth-refresh?autoRefresh=true",
+                ),
                 additionalMatcher: (_, config) => {
                     assert.equal(config?.headers?.["Authorization"], token);
                     invokes.push("auto-auth-refresh");

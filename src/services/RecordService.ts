@@ -30,7 +30,7 @@ export interface RecordAuthResponse<T = RecordModel> {
     /**
      * Auth meta data usually filled when OAuth2 is used.
      */
-    meta?: { [key: string]: any };
+    meta?: Record<string, unknown>;
 }
 
 export interface AuthProviderInfo {
@@ -238,7 +238,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
             if (
                 // is record auth
                 this.client.authStore.model?.id === item?.id &&
-                (this.client.authStore.model?.collectionId === this.collectionIdOrName ||
+                (this.client.authStore.model?.collectionId ===
+                    this.collectionIdOrName ||
                     this.client.authStore.model?.collectionName ===
                         this.collectionIdOrName)
             ) {
@@ -261,7 +262,8 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
                 success &&
                 // is record auth
                 this.client.authStore.model?.id === id &&
-                (this.client.authStore.model?.collectionId === this.collectionIdOrName ||
+                (this.client.authStore.model?.collectionId ===
+                    this.collectionIdOrName ||
                     this.client.authStore.model?.collectionName ===
                         this.collectionIdOrName)
             ) {
@@ -621,13 +623,18 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
      *
      * @throws {ClientResponseError}
      */
-    async authRefresh<T = M>(options?: RecordOptions): Promise<RecordAuthResponse<T>>;
+    async authRefresh<T = M>(
+        options?: RecordOptions,
+    ): Promise<RecordAuthResponse<T>>;
 
     /**
      * @deprecated
      * Consider using authRefresh(options?).
      */
-    async authRefresh<T = M>(body?: any, query?: any): Promise<RecordAuthResponse<T>>;
+    async authRefresh<T = M>(
+        body?: any,
+        query?: any,
+    ): Promise<RecordAuthResponse<T>>;
 
     async authRefresh<T = M>(
         bodyOrOptions?: any,
@@ -654,13 +661,20 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
      *
      * @throws {ClientResponseError}
      */
-    async requestPasswordReset(email: string, options?: CommonOptions): Promise<boolean>;
+    async requestPasswordReset(
+        email: string,
+        options?: CommonOptions,
+    ): Promise<boolean>;
 
     /**
      * @deprecated
      * Consider using requestPasswordReset(email, options?).
      */
-    async requestPasswordReset(email: string, body?: any, query?: any): Promise<boolean>;
+    async requestPasswordReset(
+        email: string,
+        body?: any,
+        query?: any,
+    ): Promise<boolean>;
 
     async requestPasswordReset(
         email: string,
@@ -743,13 +757,20 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
      *
      * @throws {ClientResponseError}
      */
-    async requestVerification(email: string, options?: CommonOptions): Promise<boolean>;
+    async requestVerification(
+        email: string,
+        options?: CommonOptions,
+    ): Promise<boolean>;
 
     /**
      * @deprecated
      * Consider using requestVerification(email, options?).
      */
-    async requestVerification(email: string, body?: any, query?: any): Promise<boolean>;
+    async requestVerification(
+        email: string,
+        body?: any,
+        query?: any,
+    ): Promise<boolean>;
 
     async requestVerification(
         email: string,
@@ -842,13 +863,20 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
      *
      * @throws {ClientResponseError}
      */
-    async requestEmailChange(newEmail: string, options?: CommonOptions): Promise<boolean>;
+    async requestEmailChange(
+        newEmail: string,
+        options?: CommonOptions,
+    ): Promise<boolean>;
 
     /**
      * @deprecated
      * Consider using requestEmailChange(newEmail, options?).
      */
-    async requestEmailChange(newEmail: string, body?: any, query?: any): Promise<boolean>;
+    async requestEmailChange(
+        newEmail: string,
+        body?: any,
+        query?: any,
+    ): Promise<boolean>;
 
     async requestEmailChange(
         newEmail: string,
@@ -954,7 +982,10 @@ export class RecordService<M = RecordModel> extends CrudService<M> {
         );
 
         return this.client.send(
-            this.baseCrudPath + "/" + encodeURIComponent(recordId) + "/external-auths",
+            this.baseCrudPath +
+                "/" +
+                encodeURIComponent(recordId) +
+                "/external-auths",
             options,
         );
     }
