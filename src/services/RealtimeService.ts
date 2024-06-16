@@ -11,6 +11,12 @@ type Subscriptions = Record<string, EventListener[]>;
 
 export type UnsubscribeFunc = () => Promise<void>;
 
+export interface SubscriptionData {
+    state: string;
+    error: string;
+    code: string;
+}
+
 export class RealtimeService extends BaseService {
     clientId = "";
 
@@ -40,9 +46,10 @@ export class RealtimeService extends BaseService {
      * If the SSE connection is not started yet,
      * this method will also initialize it.
      */
-    async subscribe(
+
+    async subscribe<T>(
         topic: string,
-        callback: (data: unknown) => void,
+        callback: (data: T & SubscriptionData) => void,
         options?: SendOptions,
     ): Promise<UnsubscribeFunc> {
         if (!topic) {
@@ -65,17 +72,14 @@ export class RealtimeService extends BaseService {
             key += (key.includes("?") ? "&" : "?") + serialized;
         }
 
-        const listener = function (e: Event) {
-            const msgEvent = e as MessageEvent;
-
-            let data;
+        const listener = function (e: Event & { data?: string }) {
+            let data: T & SubscriptionData;
             try {
-                data = JSON.parse(msgEvent?.data);
+                data = JSON.parse(e.data ?? "{}");
+                callback(data);
             } catch {
                 /* ignore */
             }
-
-            callback(data || {});
         };
 
         // store the listener

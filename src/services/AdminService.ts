@@ -26,12 +26,12 @@ export class AdminService extends CrudService<AdminModel> {
      * If the current `client.authStore.model` matches with the updated id, then
      * on success the `client.authStore.model` will be updated with the result.
      */
-    async update<T extends AdminModel>(
+    async update(
         id: string,
         bodyParams?: Record<string, unknown> | FormData,
         options?: CommonOptions,
-    ): Promise<T> {
-        const item = await super.update<T>(id, bodyParams, options);
+    ): Promise<AdminModel> {
+        const item = await super.update(id, bodyParams, options);
         if (
             this.client.authStore.model?.id === item.id &&
             typeof this.client.authStore.model?.collectionId === "undefined"

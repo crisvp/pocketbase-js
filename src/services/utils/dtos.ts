@@ -12,7 +12,7 @@ export interface BaseModel extends Record<string, unknown> {
     updated: string;
 }
 
-export interface AdminModel extends BaseModel {
+export interface AdminModel extends RecordModel {
     avatar: number;
     email: string;
 }
@@ -27,7 +27,7 @@ export interface SchemaField {
     options: Record<string, unknown>;
 }
 
-export interface CollectionModel extends BaseModel {
+export interface CollectionModel extends RecordModel {
     name: string;
     type: string;
     schema: SchemaField[];

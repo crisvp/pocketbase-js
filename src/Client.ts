@@ -11,12 +11,15 @@ import { HealthService } from "@/services/HealthService";
 import { FileService } from "@/services/FileService";
 import { BackupService } from "@/services/BackupService";
 import { RecordModel } from "@/services/utils/dtos";
-import { SendOptions, FileOptions, normalizeUnknownQueryParams } from "@/services/utils/options";
+import {
+    SendOptions,
+    FileOptions,
+    normalizeUnknownQueryParams,
+} from "@/services/utils/options";
 
-export interface BeforeSendResult {
-    [key: string]: any; // for backward compatibility
+export interface BeforeSendResult extends Record<string, unknown> {
     url?: string;
-    options?: { [key: string]: any };
+    options?: Record<string, unknown>;
 }
 
 /**
@@ -47,7 +50,10 @@ export class Client {
      * };
      * ```
      */
-    beforeSend?: (url: string, options: SendOptions) => BeforeSendResult | Promise<BeforeSendResult>;
+    beforeSend?: (
+        url: string,
+        options: SendOptions,
+    ) => BeforeSendResult | Promise<BeforeSendResult>;
 
     /**
      * Hook that get triggered after successfully sending the fetch request,
@@ -70,7 +76,7 @@ export class Client {
      * };
      * ```
      */
-    afterSend?: (response: Response, data: any) => any;
+    afterSend?: <T = unknown>(response: Response, data: T) => T | PromiseLike<T>;
 
     /**
      * Optional language code (default to `en-US`) that will be sent
@@ -123,9 +129,15 @@ export class Client {
      */
     readonly backups: BackupService;
 
-    private cancelControllers: { [key: string]: AbortController } = {};
-    private recordServices: { [key: string]: RecordService } = {};
-    private enableAutoCancellation: boolean = true;
+    private cancelControllers: Map<string, AbortController> = new Map<
+        string,
+        AbortController
+    >();
+    private recordServices: Map<string, RecordService> = new Map<
+        string,
+        RecordService
+    >();
+    private enableAutoCancellation = true;
 
     constructor(baseUrl = "/", authStore?: BaseAuthStore | null, lang = "en-US") {
         this.baseUrl = baseUrl;
@@ -149,12 +161,15 @@ export class Client {
      * @param  {string} idOrName
      * @return {RecordService}
      */
-    collection<M = RecordModel>(idOrName: string): RecordService<M> {
-        if (!this.recordServices[idOrName]) {
-            this.recordServices[idOrName] = new RecordService(this, idOrName);
-        }
+    collection<M extends RecordModel = RecordModel>(
+        idOrName: string,
+    ): RecordService<M> {
+        const service =
+            (this.recordServices.get(idOrName) as RecordService<M>) ??
+            new RecordService<M>(this, idOrName);
+        this.recordServices.set(idOrName, service);
 
-        return this.recordServices[idOrName];
+        return service;
     }
 
     /**
@@ -170,9 +185,10 @@ export class Client {
      * Cancels single request by its cancellation key.
      */
     cancelRequest(requestKey: string): Client {
-        if (this.cancelControllers[requestKey]) {
-            this.cancelControllers[requestKey].abort();
-            delete this.cancelControllers[requestKey];
+        const controller = this.cancelControllers.get(requestKey);
+        if (controller) {
+            controller.abort();
+            this.cancelControllers.delete(requestKey);
         }
 
         return this;
@@ -182,11 +198,8 @@ export class Client {
      * Cancels all pending requests.
      */
     cancelAllRequests(): Client {
-        for (let k in this.cancelControllers) {
-            this.cancelControllers[k].abort();
-        }
-
-        this.cancelControllers = {};
+        this.cancelControllers.forEach((controller) => controller.abort());
+        this.cancelControllers.clear();
 
         return this;
     }
@@ -214,12 +227,12 @@ export class Client {
      * ))
      * ```
      */
-    filter(raw: string, params?: { [key: string]: any }): string {
+    filter(raw: string, params?: Record<string, unknown>): string {
         if (!params) {
             return raw;
         }
 
-        for (let key in params) {
+        for (const key in params) {
             let val = params[key];
             switch (typeof val) {
                 case "boolean":
@@ -238,7 +251,7 @@ export class Client {
                         val = "'" + JSON.stringify(val).replace(/'/g, "\\'") + "'";
                     }
             }
-            raw = raw.replaceAll("{:" + key + "}", val);
+            if (typeof val === "string") raw = raw.replaceAll("{:" + key + "}", val);
         }
 
         return raw;
@@ -247,7 +260,11 @@ export class Client {
     /**
      * Legacy alias of `pb.files.getUrl()`.
      */
-    getFileUrl(record: { [key: string]: any }, filename: string, queryParams: FileOptions = {}): string {
+    getFileUrl(
+        record: RecordModel,
+        filename: string,
+        queryParams: FileOptions = {},
+    ): string {
         return this.files.getUrl(record, filename, queryParams);
     }
 
@@ -265,7 +282,10 @@ export class Client {
             !url.startsWith("http://")
         ) {
             url = window.location.origin?.endsWith("/")
-                ? window.location.origin.substring(0, window.location.origin.length - 1)
+                ? window.location.origin.substring(
+                      0,
+                      window.location.origin.length - 1,
+                  )
                 : window.location.origin || "";
 
             if (!this.baseUrl.startsWith("/")) {
@@ -290,7 +310,7 @@ export class Client {
      *
      * @throws {ClientResponseError}
      */
-    async send<T = any>(path: string, options: SendOptions): Promise<T> {
+    async send<T = unknown>(path: string, options: SendOptions): Promise<T> {
         options = this.initSendOptions(path, options);
 
         // build url + path
@@ -298,7 +318,10 @@ export class Client {
 
         if (this.beforeSend) {
             const result = Object.assign({}, await this.beforeSend(url, options));
-            if (typeof result.url !== "undefined" || typeof result.options !== "undefined") {
+            if (
+                typeof result.url !== "undefined" ||
+                typeof result.options !== "undefined"
+            ) {
                 url = result.url || url;
                 options = result.options || options;
             } else if (Object.keys(result).length) {
@@ -334,7 +357,7 @@ export class Client {
         // send the request
         return fetchFunc(url, options)
             .then(async (response) => {
-                let data: any = {};
+                let data: Record<string, unknown> = {};
 
                 try {
                     data = await response.json();
@@ -383,10 +406,16 @@ export class Client {
         // ---
         options.query = Object.assign({}, options.params, options.query);
         if (typeof options.requestKey === "undefined") {
-            if (options.$autoCancel === false || options.query.$autoCancel === false) {
+            if (
+                options.$autoCancel === false ||
+                options.query.$autoCancel === false
+            ) {
                 options.requestKey = null;
-            } else if (options.$cancelKey || options.query.$cancelKey) {
-                options.requestKey = options.$cancelKey || options.query.$cancelKey;
+            } else if (
+                options.query.$cancelKey &&
+                typeof options.query.$cancelKey === "string"
+            ) {
+                options.requestKey = options.query.$cancelKey;
             }
         }
         // remove the deprecated special cancellation params from the other query params
@@ -398,7 +427,10 @@ export class Client {
 
         // add the json header, if not explicitly set
         // (for FormData body the Content-Type header should be skipped since the boundary is autogenerated)
-        if (this.getHeader(options.headers, "Content-Type") === null && !this.isFormData(options.body)) {
+        if (
+            this.getHeader(options.headers, "Content-Type") === null &&
+            !this.isFormData(options.body)
+        ) {
             options.headers = Object.assign({}, options.headers, {
                 "Content-Type": "application/json",
             });
@@ -425,7 +457,8 @@ export class Client {
 
         // handle auto cancelation for duplicated pending request
         if (this.enableAutoCancellation && options.requestKey !== null) {
-            const requestKey = options.requestKey || (options.method || "GET") + path;
+            const requestKey =
+                options.requestKey || (options.method || "GET") + path;
 
             delete options.requestKey;
 
@@ -433,7 +466,7 @@ export class Client {
             this.cancelRequest(requestKey);
 
             const controller = new AbortController();
-            this.cancelControllers[requestKey] = controller;
+            this.cancelControllers.set(requestKey, controller);
             options.signal = controller.signal;
         }
 
@@ -444,36 +477,35 @@ export class Client {
      * Converts analyzes the provided body and converts it to FormData
      * in case a plain object with File/Blob values is used.
      */
-    private convertToFormDataIfNeeded(body: any): any {
+    private convertToFormDataIfNeeded(body: unknown): FormData | undefined {
+        if (this.isFormData(body)) return body;
+        if (!this.hasBlobField(body)) return undefined;
+
         if (
             typeof FormData === "undefined" ||
             typeof body === "undefined" ||
             typeof body !== "object" ||
-            body === null ||
-            this.isFormData(body) ||
-            !this.hasBlobField(body)
+            body === null
         ) {
-            return body;
+            return undefined;
         }
 
         const form = new FormData();
 
-        for (const key in body) {
-            const val = body[key];
-
+        Object.entries(body).forEach(([key, val]) => {
             if (typeof val === "object" && !this.hasBlobField({ data: val })) {
                 // send json-like values as jsonPayload to avoid the implicit string value normalization
-                let payload: { [key: string]: any } = {};
+                const payload: Record<string, unknown> = {};
                 payload[key] = val;
                 form.append("@jsonPayload", JSON.stringify(payload));
             } else {
                 // in case of mixed string and file/blob
                 const normalizedVal = Array.isArray(val) ? val : [val];
-                for (let v of normalizedVal) {
+                for (const v of normalizedVal) {
                     form.append(key, v);
                 }
             }
-        }
+        });
 
         return form;
     }
@@ -481,16 +513,15 @@ export class Client {
     /**
      * Checks if the submitted body object has at least one Blob/File field.
      */
-    private hasBlobField(body: { [key: string]: any }): boolean {
-        for (const key in body) {
-            const values = Array.isArray(body[key]) ? body[key] : [body[key]];
-            for (const v of values) {
-                if (
-                    (typeof Blob !== "undefined" && v instanceof Blob) ||
-                    (typeof File !== "undefined" && v instanceof File)
-                ) {
-                    return true;
-                }
+    private hasBlobField(body: unknown): boolean {
+        if (typeof body !== "object" || body === null) return false;
+
+        for (const val of Object.values(body)) {
+            if (
+                (typeof Blob !== "undefined" && val instanceof Blob) ||
+                (typeof File !== "undefined" && val instanceof File)
+            ) {
+                return true;
             }
         }
 
@@ -501,11 +532,14 @@ export class Client {
      * Extracts the header with the provided name in case-insensitive manner.
      * Returns `null` if no header matching the name is found.
      */
-    private getHeader(headers: { [key: string]: string } | undefined, name: string): string | null {
+    private getHeader(
+        headers: Record<string, string> | undefined,
+        name: string,
+    ): string | null {
         headers = headers || {};
         name = name.toLowerCase();
 
-        for (let key in headers) {
+        for (const key in headers) {
             if (key.toLowerCase() == name) {
                 return headers[key];
             }
@@ -517,9 +551,9 @@ export class Client {
     /**
      * Loosely checks if the specified body is a FormData instance.
      */
-    private isFormData(body: any): boolean {
+    private isFormData(body: unknown): body is FormData {
         return (
-            body &&
+            !!body &&
             // we are checking the constructor name because FormData
             // is not available natively in some environments and the
             // polyfill(s) may not be globally accessible
@@ -534,8 +568,8 @@ export class Client {
     /**
      * Serializes the provided query parameters into a query string.
      */
-    private serializeQueryParams(params: { [key: string]: any }): string {
-        const result: Array<string> = [];
+    private serializeQueryParams(params: Record<string, unknown>): string {
+        const result: string[] = [];
         for (const key in params) {
             if (params[key] === null) {
                 // skip null query params
@@ -551,10 +585,18 @@ export class Client {
                     result.push(encodedKey + "=" + encodeURIComponent(v));
                 }
             } else if (value instanceof Date) {
-                result.push(encodedKey + "=" + encodeURIComponent(value.toISOString()));
-            } else if (typeof value !== null && typeof value === "object") {
-                result.push(encodedKey + "=" + encodeURIComponent(JSON.stringify(value)));
-            } else {
+                result.push(
+                    encodedKey + "=" + encodeURIComponent(value.toISOString()),
+                );
+            } else if (value && typeof value === "object") {
+                result.push(
+                    encodedKey + "=" + encodeURIComponent(JSON.stringify(value)),
+                );
+            } else if (
+                typeof value === "boolean" ||
+                typeof value === "number" ||
+                typeof value === "string"
+            ) {
                 result.push(encodedKey + "=" + encodeURIComponent(value));
             }
         }

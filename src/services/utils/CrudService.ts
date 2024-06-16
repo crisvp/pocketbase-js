@@ -1,15 +1,13 @@
 import { BaseService } from "@/services/utils/BaseService";
 import { ClientResponseError } from "@/ClientResponseError";
-import { ListResult } from "@/services/utils/dtos";
+import { ListResult, RecordModel } from "@/services/utils/dtos";
 import {
     CommonOptions,
     ListOptions,
     FullListOptions,
 } from "@/services/utils/options";
 
-export abstract class CrudService<
-    M extends Record<string, unknown>,
-> extends BaseService {
+export abstract class CrudService<M extends RecordModel> extends BaseService {
     /**
      * Base path for the crud actions (without trailing slash, eg. '/admins').
      */
@@ -18,7 +16,7 @@ export abstract class CrudService<
     /**
      * Response data decoder.
      */
-    decode<T extends Record<string, unknown> = M>(data: T): T {
+    decode<T>(data: T): T {
         return data;
     }
 
@@ -30,22 +28,12 @@ export abstract class CrudService<
      *
      * @throws {ClientResponseError}
      */
-    async getFullList<T = M>(options?: FullListOptions): Promise<T[]>;
-
-    /**
-     * Legacy version of getFullList with explicitly specified batch size.
-     */
-    async getFullList<T extends Record<string, unknown> = M>(
-        batch?: number,
-        options?: ListOptions,
-    ): Promise<T[]>;
-
-    async getFullList<T extends Record<string, unknown> = M>(
+    async getFullList(
         batchOrqueryParams?: number | FullListOptions,
         options?: FullListOptions,
-    ): Promise<T[]> {
+    ): Promise<M[]> {
         if (typeof batchOrqueryParams == "number") {
-            return this._getFullList<T>(batchOrqueryParams, options);
+            return this._getFullList(batchOrqueryParams, options);
         }
 
         options = Object.assign({}, batchOrqueryParams, options);
@@ -56,7 +44,7 @@ export abstract class CrudService<
             delete options.batch;
         }
 
-        return this._getFullList<T>(batch, options);
+        return this._getFullList(batch, options);
     }
 
     /**
@@ -66,11 +54,11 @@ export abstract class CrudService<
      *
      * @throws {ClientResponseError}
      */
-    async getList<T extends Record<string, unknown> = M>(
+    async getList(
         page = 1,
         perPage = 30,
         options?: ListOptions,
-    ): Promise<ListResult<T>> {
+    ): Promise<ListResult<M>> {
         options = Object.assign(
             {
                 method: "GET",
@@ -86,16 +74,11 @@ export abstract class CrudService<
             options.query,
         );
 
-        return this.client
-            .send(this.baseCrudPath, options)
-            .then((responseData: ListResult<T>) => {
-                responseData.items =
-                    responseData.items?.map((item) => {
-                        return this.decode<T>(item);
-                    }) || [];
-
-                return responseData;
-            });
+        const responseData = await this.client.send<ListResult<M>>(
+            this.baseCrudPath,
+            options,
+        );
+        return responseData;
     }
 
     /**
@@ -111,10 +94,7 @@ export abstract class CrudService<
      *
      * @throws {ClientResponseError}
      */
-    async getFirstListItem<T extends Record<string, unknown> = M>(
-        filter: string,
-        options?: CommonOptions,
-    ): Promise<T> {
+    async getFirstListItem(filter: string, options?: CommonOptions): Promise<M> {
         options = Object.assign(
             {
                 requestKey: "one_by_filter_" + this.baseCrudPath + "_" + filter,
@@ -130,20 +110,20 @@ export abstract class CrudService<
             options.query,
         );
 
-        return this.getList<T>(1, 1, options).then((result) => {
-            if (!result?.items?.length) {
-                throw new ClientResponseError({
-                    status: 404,
-                    response: {
-                        code: 404,
-                        message: "The requested resource wasn't found.",
-                        data: {},
-                    },
-                });
-            }
+        const result = await this.getList(1, 1, options);
 
-            return result.items[0];
-        });
+        if (!result?.items?.length) {
+            throw new ClientResponseError({
+                status: 404,
+                response: {
+                    code: 404,
+                    message: "The requested resource wasn't found.",
+                    data: {},
+                },
+            });
+        }
+
+        return result.items[0];
     }
 
     /**
@@ -153,12 +133,9 @@ export abstract class CrudService<
      *
      * If `id` is empty it will throw a 404 error.
      *
-     * @throws {ClientResponseError}
+     M @throws {ClientResponseError}
      */
-    async getOne<T extends Record<string, unknown> = M>(
-        id: string,
-        options?: CommonOptions,
-    ): Promise<T> {
+    async getOne(id: string, options?: CommonOptions): Promise<M> {
         if (!id) {
             throw new ClientResponseError({
                 url: this.client.buildUrl(this.baseCrudPath + "/"),
@@ -178,9 +155,10 @@ export abstract class CrudService<
             options,
         );
 
-        return this.client
-            .send(this.baseCrudPath + "/" + encodeURIComponent(id), options)
-            .then((responseData) => this.decode<T>(responseData));
+        return this.client.send(
+            this.baseCrudPath + "/" + encodeURIComponent(id),
+            options,
+        );
     }
 
     /**
@@ -190,10 +168,10 @@ export abstract class CrudService<
      *
      * @throws {ClientResponseError}
      */
-    async create<T extends Record<string, unknown> = M>(
+    async create(
         bodyParams?: Record<string, unknown> | FormData,
         options?: CommonOptions,
-    ): Promise<T> {
+    ): Promise<M> {
         options = Object.assign(
             {
                 method: "POST",
@@ -202,9 +180,7 @@ export abstract class CrudService<
             options,
         );
 
-        return this.client
-            .send(this.baseCrudPath, options)
-            .then((responseData) => this.decode<T>(responseData));
+        return this.client.send(this.baseCrudPath, options);
     }
 
     /**
@@ -214,11 +190,11 @@ export abstract class CrudService<
      *
      * @throws {ClientResponseError}
      */
-    async update<T extends M = M>(
+    async update(
         id: string,
         bodyParams?: Record<string, unknown> | FormData,
         options?: CommonOptions,
-    ): Promise<T> {
+    ): Promise<M> {
         options = Object.assign(
             {
                 method: "PATCH",
@@ -227,9 +203,10 @@ export abstract class CrudService<
             options,
         );
 
-        return this.client
-            .send(this.baseCrudPath + "/" + encodeURIComponent(id), options)
-            .then((responseData) => this.decode<T>(responseData));
+        return this.client.send(
+            this.baseCrudPath + "/" + encodeURIComponent(id),
+            options,
+        );
     }
 
     /**
@@ -253,10 +230,7 @@ export abstract class CrudService<
     /**
      * Returns a promise with all list items batch fetched at once.
      */
-    protected _getFullList<T extends Record<string, unknown> = M>(
-        batchSize = 500,
-        options?: ListOptions,
-    ): Promise<T[]> {
+    protected _getFullList(batchSize = 500, options?: ListOptions): Promise<M[]> {
         options = options || {};
         options.query = Object.assign(
             {
@@ -265,20 +239,17 @@ export abstract class CrudService<
             options.query,
         );
 
-        let result: T[] = [];
+        let result: M[] = [];
 
-        const request = async (page: number): Promise<T[]> => {
-            return this.getList<T>(page, batchSize || 500, options).then((list) => {
-                const items = list.items;
+        const request = async (page: number): Promise<M[]> => {
+            const list = await this.getList(page, batchSize || 500, options);
+            const items = list.items;
 
-                result = result.concat(items);
+            result = result.concat(items);
 
-                if (items.length == list.perPage) {
-                    return request(page + 1);
-                }
+            if (items.length == list.perPage) return request(page + 1);
 
-                return result;
-            });
+            return result;
         };
 
         return request(1);
