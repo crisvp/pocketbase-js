@@ -112,7 +112,7 @@ export class AdminService extends CrudService<AdminModel> {
 
         // not from auto refresh reauthentication
 
-        let authData = await this.client.send(
+        let authData = await this.client.send<AdminAuthResponse>(
             this.baseCrudPath + "/auth-with-password",
             request,
         );
@@ -149,7 +149,7 @@ export class AdminService extends CrudService<AdminModel> {
         options = { method: "POST", ...options };
 
         return this.client
-            .send(this.baseCrudPath + "/auth-refresh", options)
+            .send<AdminAuthResponse>(this.baseCrudPath + "/auth-refresh", options)
             .then(this.authResponse.bind(this));
     }
 
