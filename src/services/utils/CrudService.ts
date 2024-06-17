@@ -1,11 +1,7 @@
 import { BaseService } from "@/services/utils/BaseService";
 import { ClientResponseError } from "@/ClientResponseError";
 import { ListResult, RecordModel } from "@/services/utils/dtos";
-import {
-    CommonOptions,
-    ListOptions,
-    FullListOptions,
-} from "@/services/utils/options";
+import { CommonOptions, ListOptions, FullListOptions } from "@/services/utils/options";
 
 export abstract class CrudService<M extends RecordModel> extends BaseService {
     /**
@@ -54,11 +50,7 @@ export abstract class CrudService<M extends RecordModel> extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async getList(
-        page = 1,
-        perPage = 30,
-        options?: ListOptions,
-    ): Promise<ListResult<M>> {
+    async getList(page = 1, perPage = 30, options?: ListOptions): Promise<ListResult<M>> {
         options = Object.assign(
             {
                 method: "GET",

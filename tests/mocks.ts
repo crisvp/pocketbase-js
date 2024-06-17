@@ -48,7 +48,9 @@ export class FetchMock {
 
                     // deserialize
                     if (typeof config?.body === "string") {
-                        configBody = JSON.parse(config?.body) as { [key: string]: any };
+                        configBody = JSON.parse(config?.body) as {
+                            [key: string]: any;
+                        };
                     }
 
                     let hasMissingBodyParam = false;

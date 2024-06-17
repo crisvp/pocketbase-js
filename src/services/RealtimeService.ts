@@ -374,9 +374,7 @@ export class RealtimeService extends BaseService {
         // wait up to 15s for connect
         clearTimeout(this.connectTimeoutId);
         this.connectTimeoutId = setTimeout(() => {
-            this.connectErrorHandler(
-                new Error("EventSource connect took too long."),
-            );
+            this.connectErrorHandler(new Error("EventSource connect took too long."));
         }, this.maxConnectTimeout);
 
         this.eventSource = new EventSource(this.client.buildUrl("/api/realtime"));

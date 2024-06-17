@@ -6,11 +6,7 @@ export class FileService extends BaseService {
     /**
      * Builds and returns an absolute record file url for the provided filename.
      */
-    getUrl(
-        record: RecordModel,
-        filename: string,
-        queryParams: FileOptions = {},
-    ): string {
+    getUrl(record: RecordModel, filename: string, queryParams: FileOptions = {}): string {
         if (
             !filename ||
             !record?.id ||

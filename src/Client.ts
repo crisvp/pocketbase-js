@@ -133,10 +133,7 @@ export class Client {
         string,
         AbortController
     >();
-    private recordServices: Map<string, RecordService> = new Map<
-        string,
-        RecordService
-    >();
+    private recordServices: Map<string, RecordService> = new Map<string, RecordService>();
     private enableAutoCancellation = true;
 
     constructor(baseUrl = "/", authStore?: BaseAuthStore | null, lang = "en-US") {
@@ -161,9 +158,7 @@ export class Client {
      * @param  {string} idOrName
      * @return {RecordService}
      */
-    collection<M extends RecordModel = RecordModel>(
-        idOrName: string,
-    ): RecordService<M> {
+    collection<M extends RecordModel = RecordModel>(idOrName: string): RecordService<M> {
         const service =
             (this.recordServices.get(idOrName) as RecordService<M>) ??
             new RecordService<M>(this, idOrName);
@@ -282,10 +277,7 @@ export class Client {
             !url.startsWith("http://")
         ) {
             url = window.location.origin?.endsWith("/")
-                ? window.location.origin.substring(
-                      0,
-                      window.location.origin.length - 1,
-                  )
+                ? window.location.origin.substring(0, window.location.origin.length - 1)
                 : window.location.origin || "";
 
             if (!this.baseUrl.startsWith("/")) {
@@ -350,9 +342,7 @@ export class Client {
                 });
             }
 
-            return this.afterSend
-                ? await this.afterSend(response, data)
-                : (data as T);
+            return this.afterSend ? await this.afterSend(response, data) : (data as T);
         } catch (err) {
             // wrap to normalize all errors
             throw new ClientResponseError(err);
@@ -379,10 +369,7 @@ export class Client {
         // ---
         options.query = Object.assign({}, options.params, options.query);
         if (typeof options.requestKey === "undefined") {
-            if (
-                options.$autoCancel === false ||
-                options.query.$autoCancel === false
-            ) {
+            if (options.$autoCancel === false || options.query.$autoCancel === false) {
                 options.requestKey = null;
             } else if (
                 options.query.$cancelKey &&
@@ -430,8 +417,7 @@ export class Client {
 
         // handle auto cancelation for duplicated pending request
         if (this.enableAutoCancellation && options.requestKey !== null) {
-            const requestKey =
-                options.requestKey || (options.method || "GET") + path;
+            const requestKey = options.requestKey || (options.method || "GET") + path;
 
             delete options.requestKey;
 
@@ -558,13 +544,9 @@ export class Client {
                     result.push(encodedKey + "=" + encodeURIComponent(v));
                 }
             } else if (value instanceof Date) {
-                result.push(
-                    encodedKey + "=" + encodeURIComponent(value.toISOString()),
-                );
+                result.push(encodedKey + "=" + encodeURIComponent(value.toISOString()));
             } else if (value && typeof value === "object") {
-                result.push(
-                    encodedKey + "=" + encodeURIComponent(JSON.stringify(value)),
-                );
+                result.push(encodedKey + "=" + encodeURIComponent(JSON.stringify(value)));
             } else if (
                 typeof value === "boolean" ||
                 typeof value === "number" ||

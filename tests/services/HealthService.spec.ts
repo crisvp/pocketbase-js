@@ -32,7 +32,10 @@ describe("HealthService", function () {
                 replyBody: { code: 200, message: "test", data: {} },
             });
 
-            const result = await service.check({ q1: 123, headers: { "x-test": "456" } });
+            const result = await service.check({
+                q1: 123,
+                headers: { "x-test": "456" },
+            });
 
             assert.deepEqual(result, { code: 200, message: "test", data: {} });
         });

@@ -138,8 +138,7 @@ describe("AdminService", function () {
             fetchMock.on({
                 method: "POST",
                 url:
-                    service.client.buildUrl("/api/admins/auth-with-password") +
-                    "?q1=456",
+                    service.client.buildUrl("/api/admins/auth-with-password") + "?q1=456",
                 body: {
                     identity: "test@example.com",
                     password: "123456",
@@ -154,14 +153,10 @@ describe("AdminService", function () {
                 },
             });
 
-            const result = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                {
-                    q1: 456,
-                    headers: { "x-test": "123" },
-                },
-            );
+            const result = await service.authWithPassword("test@example.com", "123456", {
+                q1: 456,
+                headers: { "x-test": "123" },
+            });
 
             authResponseCheck(
                 result,
@@ -451,9 +446,7 @@ describe("AdminService", function () {
 
             fetchMock.on({
                 method: "POST",
-                url: service.client.buildUrl(
-                    "/api/admins/auth-refresh?autoRefresh=true",
-                ),
+                url: service.client.buildUrl("/api/admins/auth-refresh?autoRefresh=true"),
                 additionalMatcher: (_, config) => {
                     assert.equal(config?.headers?.["Authorization"], token);
                     invokes.push("auto-auth-refresh");
@@ -536,9 +529,7 @@ describe("AdminService", function () {
 
             fetchMock.on({
                 method: "POST",
-                url: service.client.buildUrl(
-                    "/api/admins/auth-refresh?autoRefresh=true",
-                ),
+                url: service.client.buildUrl("/api/admins/auth-refresh?autoRefresh=true"),
                 additionalMatcher: (_, config) => {
                     assert.equal(config?.headers?.["Authorization"], token);
                     invokes.push("auto-auth-refresh");
@@ -640,9 +631,7 @@ describe("AdminService", function () {
             // shouldn't be invoked!
             fetchMock.on({
                 method: "POST",
-                url: service.client.buildUrl(
-                    "/api/admins/auth-refresh?autoRefresh=true",
-                ),
+                url: service.client.buildUrl("/api/admins/auth-refresh?autoRefresh=true"),
                 additionalMatcher: (_, config) => {
                     assert.equal(config?.headers?.["Authorization"], token);
                     invokes.push("auto-auth-refresh");

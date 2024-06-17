@@ -74,9 +74,7 @@ export interface OAuth2AuthConfig extends SendOptions {
     query?: RecordOptions;
 }
 
-export class RecordService<
-    M extends RecordModel = RecordModel,
-> extends CrudService<M> {
+export class RecordService<M extends RecordModel = RecordModel> extends CrudService<M> {
     readonly collectionIdOrName: string;
 
     constructor(client: Client, collectionIdOrName: string) {
@@ -221,8 +219,7 @@ export class RecordService<
             if (
                 // is record auth
                 this.client.authStore.model?.id === item?.id &&
-                (this.client.authStore.model?.collectionId ===
-                    this.collectionIdOrName ||
+                (this.client.authStore.model?.collectionId === this.collectionIdOrName ||
                     this.client.authStore.model?.collectionName ===
                         this.collectionIdOrName)
             ) {
@@ -245,8 +242,7 @@ export class RecordService<
                 success &&
                 // is record auth
                 this.client.authStore.model?.id === id &&
-                (this.client.authStore.model?.collectionId ===
-                    this.collectionIdOrName ||
+                (this.client.authStore.model?.collectionId === this.collectionIdOrName ||
                     this.client.authStore.model?.collectionName ===
                         this.collectionIdOrName)
             ) {
@@ -292,10 +288,7 @@ export class RecordService<
         );
 
         return this.client
-            .send<AuthMethodsList>(
-                this.baseCollectionPath + "/auth-methods",
-                options,
-            )
+            .send<AuthMethodsList>(this.baseCollectionPath + "/auth-methods", options)
             .then((responseData: AuthMethodsList) => {
                 return Object.assign({}, responseData, {
                     // normalize common fields
@@ -333,10 +326,7 @@ export class RecordService<
         };
 
         return this.client
-            .send<AuthModel>(
-                this.baseCollectionPath + "/auth-with-password",
-                options,
-            )
+            .send<AuthModel>(this.baseCollectionPath + "/auth-with-password", options)
             .then((data) => this.authResponse<T>(data));
     }
 
@@ -717,10 +707,7 @@ export class RecordService<
         );
 
         return this.client.send(
-            this.baseCrudPath +
-                "/" +
-                encodeURIComponent(recordId) +
-                "/external-auths",
+            this.baseCrudPath + "/" + encodeURIComponent(recordId) + "/external-auths",
             options,
         );
     }

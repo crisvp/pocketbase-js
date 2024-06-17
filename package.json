@@ -31,7 +31,7 @@
     },
     "prettier": {
         "tabWidth": 4,
-        "printWidth": 85,
+        "printWidth": 90,
         "bracketSameLine": true
     },
     "browserslist": [

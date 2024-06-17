@@ -33,8 +33,6 @@ export class CollectionService extends CrudService<CollectionModel> {
             options,
         );
 
-        return this.client
-            .send(this.baseCrudPath + "/import", options)
-            .then(() => true);
+        return this.client.send(this.baseCrudPath + "/import", options).then(() => true);
     }
 }

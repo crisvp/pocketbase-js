@@ -34,7 +34,13 @@ describe("Client", function () {
         test("Should load all api resources", async function () {
             const client = new Client("test_base_url");
 
-            const baseServices = ["admins", "collections", "logs", "settings", "realtime"];
+            const baseServices = [
+                "admins",
+                "collections",
+                "logs",
+                "settings",
+                "realtime",
+            ];
 
             for (const service of baseServices) {
                 assert.isNotEmpty((client as any)[service]);
@@ -85,29 +91,53 @@ describe("Client", function () {
             // with empty base url
             {
                 const client = new Client("");
-                assert.equal(client.buildUrl("test123"), "https://example.com/sub/test123");
-                assert.equal(client.buildUrl("/test123"), "https://example.com/sub/test123");
+                assert.equal(
+                    client.buildUrl("test123"),
+                    "https://example.com/sub/test123",
+                );
+                assert.equal(
+                    client.buildUrl("/test123"),
+                    "https://example.com/sub/test123",
+                );
             }
 
             // relative base url with starting slash
             {
                 const client = new Client("/a/b/");
-                assert.equal(client.buildUrl("test123"), "https://example.com/a/b/test123");
-                assert.equal(client.buildUrl("/test123"), "https://example.com/a/b/test123");
+                assert.equal(
+                    client.buildUrl("test123"),
+                    "https://example.com/a/b/test123",
+                );
+                assert.equal(
+                    client.buildUrl("/test123"),
+                    "https://example.com/a/b/test123",
+                );
             }
 
             // relative base url with parent path traversal
             {
                 const client = new Client("../a/b/");
-                assert.equal(client.buildUrl("test123"), "https://example.com/sub/../a/b/test123");
-                assert.equal(client.buildUrl("/test123"), "https://example.com/sub/../a/b/test123");
+                assert.equal(
+                    client.buildUrl("test123"),
+                    "https://example.com/sub/../a/b/test123",
+                );
+                assert.equal(
+                    client.buildUrl("/test123"),
+                    "https://example.com/sub/../a/b/test123",
+                );
             }
 
             // relative base url without starting slash
             {
                 const client = new Client("a/b/");
-                assert.equal(client.buildUrl("test123"), "https://example.com/sub/a/b/test123");
-                assert.equal(client.buildUrl("/test123"), "https://example.com/sub/a/b/test123");
+                assert.equal(
+                    client.buildUrl("test123"),
+                    "https://example.com/sub/a/b/test123",
+                );
+                assert.equal(
+                    client.buildUrl("/test123"),
+                    "https://example.com/sub/a/b/test123",
+                );
             }
 
             // with explicit HTTP absolute base url
@@ -257,7 +287,10 @@ describe("Client", function () {
 
                     // check FormData transformation
                     assert.deepEqual(config.body.getAll("title"), ["test"]);
-                    assert.deepEqual(config.body.getAll("@jsonPayload"), ['{"roles":["a","b"]}', '{"json":null}']);
+                    assert.deepEqual(config.body.getAll("@jsonPayload"), [
+                        '{"roles":["a","b"]}',
+                        '{"json":null}',
+                    ]);
                     assert.equal(config.body.getAll("files").length, 2);
                     assert.equal(config.body.getAll("files")[0].size, 2);
                     assert.equal(config.body.getAll("files")[1].size, 1);
@@ -274,7 +307,13 @@ describe("Client", function () {
                 [client.send("/123", { method: "PUT" }), "successPut"],
                 [client.send("/123", { method: "PATCH" }), "successPatch"],
                 [client.send("/123", { method: "DELETE" }), "successDelete"],
-                [client.send("/multipart", { method: "GET", body: new FormData() }), "successMultipart"],
+                [
+                    client.send("/multipart", {
+                        method: "GET",
+                        body: new FormData(),
+                    }),
+                    "successMultipart",
+                ],
                 [
                     client.send("/multipartAuto", {
                         method: "GET",
@@ -370,7 +409,10 @@ describe("Client", function () {
                 replyCode: 200,
                 replyBody: "123",
                 additionalMatcher: function (url, config) {
-                    return url == newUrl && (config?.headers as any)?.["X-Custom-Header"] == "456";
+                    return (
+                        url == newUrl &&
+                        (config?.headers as any)?.["X-Custom-Header"] == "456"
+                    );
                 },
             });
 
@@ -398,7 +440,10 @@ describe("Client", function () {
                 replyCode: 200,
                 replyBody: "123",
                 additionalMatcher: function (url, config) {
-                    return url == newUrl && (config?.headers as any)?.["X-Custom-Header"] == "456";
+                    return (
+                        url == newUrl &&
+                        (config?.headers as any)?.["X-Custom-Header"] == "456"
+                    );
                 },
             });
 
@@ -635,9 +680,18 @@ describe("Client", function () {
                 replyCode: 200,
             });
 
-            const requestA = client.send("/123", { method: "GET", requestKey: null });
-            const requestB = client.send("/123", { method: "GET", requestKey: null });
-            const requestC = client.send("/123", { method: "GET", requestKey: null });
+            const requestA = client.send("/123", {
+                method: "GET",
+                requestKey: null,
+            });
+            const requestB = client.send("/123", {
+                method: "GET",
+                requestKey: null,
+            });
+            const requestC = client.send("/123", {
+                method: "GET",
+                requestKey: null,
+            });
 
             await expect(requestA).resolves.toBeDefined();
             await expect(requestB).resolves.toBeDefined();

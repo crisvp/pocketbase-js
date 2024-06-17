@@ -2,9 +2,7 @@ import Client from "@/Client";
 import { isTokenExpired } from "@/stores/utils/jwt";
 
 // reset previous auto refresh registrations
-export function resetAutoRefresh(
-    client: Client & { _resetAutoRefresh?: () => void },
-) {
+export function resetAutoRefresh(client: Client & { _resetAutoRefresh?: () => void }) {
     client._resetAutoRefresh?.();
 }
 
@@ -44,9 +42,7 @@ export function registerAutoRefresh(
         const oldToken = client.authStore.token;
 
         if (sendOptions.query?.autoRefresh) {
-            return oldBeforeSend
-                ? oldBeforeSend(url, sendOptions)
-                : { url, sendOptions };
+            return oldBeforeSend ? oldBeforeSend(url, sendOptions) : { url, sendOptions };
         }
 
         let isValid = client.authStore.isValid;
@@ -84,8 +80,6 @@ export function registerAutoRefresh(
         }
         sendOptions.headers = headers;
 
-        return oldBeforeSend
-            ? oldBeforeSend(url, sendOptions)
-            : { url, sendOptions };
+        return oldBeforeSend ? oldBeforeSend(url, sendOptions) : { url, sendOptions };
     };
 }

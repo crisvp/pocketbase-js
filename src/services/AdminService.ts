@@ -70,9 +70,7 @@ export class AdminService extends CrudService<AdminModel> {
     /**
      * Prepare successful authorize response.
      */
-    protected authResponse(
-        responseData: Partial<AdminAuthResponse>,
-    ): AdminAuthResponse {
+    protected authResponse(responseData: Partial<AdminAuthResponse>): AdminAuthResponse {
         const admin = this.decode(responseData?.admin || {});
 
         if (responseData?.token && responseData?.admin) {
@@ -158,10 +156,7 @@ export class AdminService extends CrudService<AdminModel> {
      *
      * @throws {ClientResponseError}
      */
-    async requestPasswordReset(
-        email: string,
-        options?: CommonOptions,
-    ): Promise<boolean> {
+    async requestPasswordReset(email: string, options?: CommonOptions): Promise<boolean> {
         options = {
             method: "POST",
             body: JSON.stringify({ email }),
