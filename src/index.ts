@@ -1,4 +1,3 @@
-console.log("hi");
 export * from "@/Client";
 export * from "@/ClientResponseError";
 export * from "@/services/AdminService";

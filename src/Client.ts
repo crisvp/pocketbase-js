@@ -324,13 +324,6 @@ export class Client {
             ) {
                 url = result.url || url;
                 options = result.options || options;
-            } else if (Object.keys(result).length) {
-                // legacy behavior
-                options = result as SendOptions;
-                console?.warn &&
-                    console.warn(
-                        "Deprecated format of beforeSend return: please use `return { url, options }`, instead of `return options`.",
-                    );
             }
         }
 
@@ -343,47 +336,27 @@ export class Client {
             delete options.query;
         }
 
-        // ensures that the json body is serialized
-        if (
-            this.getHeader(options.headers, "Content-Type") == "application/json" &&
-            options.body &&
-            typeof options.body !== "string"
-        ) {
-            options.body = JSON.stringify(options.body);
-        }
-
         const fetchFunc = options.fetch || fetch;
 
-        // send the request
-        return fetchFunc(url, options)
-            .then(async (response) => {
-                let data: Record<string, unknown> = {};
+        try {
+            const response = await fetchFunc(url, options);
+            const data = await response.json();
 
-                try {
-                    data = await response.json();
-                } catch (_) {
-                    // all api responses are expected to return json
-                    // with the exception of the realtime event and 204
-                }
+            if (response.status >= 400) {
+                throw new ClientResponseError({
+                    url: response.url,
+                    status: response.status,
+                    data,
+                });
+            }
 
-                if (this.afterSend) {
-                    data = await this.afterSend(response, data);
-                }
-
-                if (response.status >= 400) {
-                    throw new ClientResponseError({
-                        url: response.url,
-                        status: response.status,
-                        data: data,
-                    });
-                }
-
-                return data as T;
-            })
-            .catch((err) => {
-                // wrap to normalize all errors
-                throw new ClientResponseError(err);
-            });
+            return this.afterSend
+                ? await this.afterSend(response, data)
+                : (data as T);
+        } catch (err) {
+            // wrap to normalize all errors
+            throw new ClientResponseError(err);
+        }
     }
 
     /**
@@ -477,9 +450,9 @@ export class Client {
      * Converts analyzes the provided body and converts it to FormData
      * in case a plain object with File/Blob values is used.
      */
-    private convertToFormDataIfNeeded(body: unknown): FormData | undefined {
+    private convertToFormDataIfNeeded<T = unknown>(body: T): FormData | T {
         if (this.isFormData(body)) return body;
-        if (!this.hasBlobField(body)) return undefined;
+        if (!this.hasBlobField(body)) return body;
 
         if (
             typeof FormData === "undefined" ||
@@ -487,7 +460,7 @@ export class Client {
             typeof body !== "object" ||
             body === null
         ) {
-            return undefined;
+            return body;
         }
 
         const form = new FormData();
