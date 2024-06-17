@@ -30,7 +30,6 @@
         "test": "vitest run"
     },
     "prettier": {
-        "editorconfig": true,
         "tabWidth": 4,
         "printWidth": 85,
         "bracketSameLine": true
