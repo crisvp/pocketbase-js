@@ -1,6 +1,8 @@
-import { describe, assert, expect, test, beforeAll, afterAll } from "vitest";
+import { describe, assert, expect, test, beforeAll, afterAll, vi } from "vitest";
 import { CrudService } from "@/services/utils/CrudService";
 import { FetchMock } from "./mocks";
+
+vi.mock("./mocks");
 
 export function crudServiceTestsSuite<M>(
     service: CrudService<M>,
@@ -308,10 +310,13 @@ export function crudServiceTestsSuite<M>(
                 expect(service.getOne("", options)).rejects.toThrow(
                     "Missing required record id.",
                 );
-                expect(service.getOne(null as any, options)).rejects.toThrow(
+
+                // @ts-expect-error - invalid input test
+                expect(service.getOne(null, options)).rejects.toThrow(
                     "Missing required record id.",
                 );
-                expect(service.getOne(undefined as any, options)).rejects.toThrow(
+                // @ts-expect-error - invalid input test
+                expect(service.getOne(undefined, options)).rejects.toThrow(
                     "Missing required record id.",
                 );
             });
@@ -325,7 +330,7 @@ export function crudServiceTestsSuite<M>(
                 );
                 const expected = service.decode({ id: "item-create" });
 
-                assert.deepEqual(result, expected);
+                assert.deepEqual(result, expected as unknown);
             });
         });
 
@@ -338,7 +343,7 @@ export function crudServiceTestsSuite<M>(
                 );
                 const expected = service.decode({ id: "item-update" });
 
-                assert.deepEqual(result, expected);
+                assert.deepEqual(result, expected as unknown);
             });
         });
 

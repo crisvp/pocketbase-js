@@ -1,13 +1,19 @@
-import { describe, assert, test, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, assert, test, beforeAll, afterAll, afterEach, vi } from "vitest";
 import { FetchMock } from "../mocks";
 import { crudServiceTestsSuite } from "../suites";
 import Client from "@/Client";
 import { CollectionService } from "@/services/CollectionService";
 import { CollectionModel } from "@/services/utils/dtos";
+import { setupServer } from "../fixtures/mockApi";
 
+vi.mock("../mocks");
 describe("CollectionService", function () {
-    const client = new Client("test_base_url");
+    const client = new Client("http://127.0.0.1:8090");
     const service = new CollectionService(client);
+
+    const server = setupServer();
+    beforeAll(() => server.listen());
+    afterAll(() => server.close());
 
     crudServiceTestsSuite(service, "/api/collections");
 

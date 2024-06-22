@@ -1,24 +1,15 @@
-import { describe, assert, test, beforeAll, afterAll, afterEach } from "vitest";
-import { FetchMock } from "../mocks";
+import { describe, assert, test, beforeAll, afterAll } from "vitest";
 import Client from "@/Client";
 import { BackupService } from "@/services/BackupService";
+import { setupServer } from "../fixtures/mockApi";
 
 describe("BackupService", function () {
-    const client = new Client("test_base_url");
+    const server = setupServer();
+    const client = new Client("http://127.0.0.1:8090");
     const service = new BackupService(client);
-    const fetchMock = new FetchMock();
 
-    beforeAll(function () {
-        fetchMock.init();
-    });
-
-    afterAll(function () {
-        fetchMock.restore();
-    });
-
-    afterEach(function () {
-        fetchMock.clearMocks();
-    });
+    beforeAll(() => server.listen());
+    afterAll(() => server.close());
 
     describe("getFullList()", function () {
         test("Should fetch all backups", async function () {
@@ -27,15 +18,15 @@ describe("BackupService", function () {
                 { key: "test2", size: 200, modified: "2023-05-18 11:00:00.123Z" },
             ];
 
-            fetchMock.on({
-                method: "GET",
-                url: service.client.buildUrl("/api/backups") + "?q1=123",
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 200,
-                replyBody: replyBody,
-            });
+            // fetchMock.on({
+            //     method: "GET",
+            //     url: service.client.buildUrl("/api/backups") + "?q1=123",
+            //     additionalMatcher: (_, config) => {
+            //         return config?.headers?.["x-test"] === "123";
+            //     },
+            //     replyCode: 200,
+            //     replyBody: replyBody,
+            // });
 
             const result = await service.getFullList({
                 q1: 123,
@@ -48,16 +39,16 @@ describe("BackupService", function () {
 
     describe("create()", function () {
         test("Should initialize a backup create", async function () {
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/backups") + "?q1=123",
-                body: { name: "@test" },
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
+            // fetchMock.on({
+            //     method: "POST",
+            //     url: service.client.buildUrl("/api/backups") + "?q1=123",
+            //     body: { name: "@test" },
+            //     additionalMatcher: (_, config) => {
+            //         return config?.headers?.["x-test"] === "123";
+            //     },
+            //     replyCode: 204,
+            //     replyBody: true,
+            // });
 
             const result = await service.create("@test", {
                 q1: 123,
@@ -70,16 +61,16 @@ describe("BackupService", function () {
 
     describe("upload()", function () {
         test("Should upload a backup", async function () {
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/backups/upload") + "?q1=123",
-                body: { file: "123" },
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
+            // fetchMock.on({
+            //     method: "POST",
+            //     url: service.client.buildUrl("/api/backups/upload") + "?q1=123",
+            //     body: { file: "123" },
+            //     additionalMatcher: (_, config) => {
+            //         return config?.headers?.["x-test"] === "123";
+            //     },
+            //     replyCode: 204,
+            //     replyBody: true,
+            // });
 
             const result = await service.upload(
                 { file: "123" },
@@ -92,15 +83,15 @@ describe("BackupService", function () {
 
     describe("delete()", function () {
         test("Should delete a single backup", async function () {
-            fetchMock.on({
-                method: "DELETE",
-                url: service.client.buildUrl("/api/backups") + "/%40test?q1=123",
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
+            // fetchMock.on({
+            //     method: "DELETE",
+            //     url: service.client.buildUrl("/api/backups") + "/%40test?q1=123",
+            //     additionalMatcher: (_, config) => {
+            //         return config?.headers?.["x-test"] === "123";
+            //     },
+            //     replyCode: 204,
+            //     replyBody: true,
+            // });
 
             const result = await service.delete("@test", {
                 q1: 123,
@@ -113,15 +104,15 @@ describe("BackupService", function () {
 
     describe("restore()", function () {
         test("Should initialize a backup restore", async function () {
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/backups") + "/%40test/restore?q1=123",
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
+            // fetchMock.on({
+            //     method: "POST",
+            //     url: service.client.buildUrl("/api/backups") + "/%40test/restore?q1=123",
+            //     additionalMatcher: (_, config) => {
+            //         return config?.headers?.["x-test"] === "123";
+            //     },
+            //     replyCode: 204,
+            //     replyBody: true,
+            // });
 
             const result = await service.restore("@test", {
                 q1: 123,

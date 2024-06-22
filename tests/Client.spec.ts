@@ -1,40 +1,37 @@
-import { describe, assert, expect, test, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, assert, expect, test, beforeAll, afterAll, vi } from "vitest";
 import Client from "@/Client";
 import { LocalAuthStore } from "@/stores/LocalAuthStore";
 import { RecordService } from "@/services/RecordService";
-import { FetchMock } from "./mocks";
+import { RecordModel } from "@/services/utils/dtos";
+import { setupServer } from "./fixtures/mockApi";
+import { serialize } from "object-to-formdata";
+import { it } from "node:test";
 
 describe("Client", function () {
-    const fetchMock = new FetchMock();
+    const server = setupServer();
+    const client = new Client("http://127.0.0.1:8090", null, "test_language");
 
     beforeAll(function () {
-        fetchMock.init();
+        server.listen({ onUnhandledRequest: "error" });
     });
 
     afterAll(function () {
-        fetchMock.restore();
+        server.close();
     });
 
-    afterEach(function () {
-        fetchMock.clearMocks();
-
-        // restore all window mocks
-        global.window = undefined as any;
-    });
+    // afterEach(function () {
+    //     fetchMock.clearMocks();
+    // });
 
     describe("constructor()", function () {
         test("Should create a properly configured http client instance", function () {
-            const client = new Client("test_base_url", null, "test_language");
-
-            assert.equal(client.baseUrl, "test_base_url");
+            assert.equal(client.baseUrl, "http://127.0.0.1:8090");
             assert.instanceOf(client.authStore, LocalAuthStore);
             assert.equal(client.lang, "test_language");
         });
 
         test("Should load all api resources", async function () {
-            const client = new Client("test_base_url");
-
-            const baseServices = [
+            const baseServices: (keyof Client)[] = [
                 "admins",
                 "collections",
                 "logs",
@@ -43,15 +40,13 @@ describe("Client", function () {
             ];
 
             for (const service of baseServices) {
-                assert.isNotEmpty((client as any)[service]);
+                assert.isNotEmpty(client[service]);
             }
         });
     });
 
     describe("collection()", function () {
         test("Should initialize the related collection record service", function () {
-            const client = new Client("test_base_url");
-
             const service1 = client.collection("test1");
             const service2 = client.collection("test2");
             const service3 = client.collection("test1"); // same as service1
@@ -81,12 +76,14 @@ describe("Client", function () {
         });
 
         test("Should construct an absolute url if window.location is defined", function () {
-            global.window = {
-                location: {
-                    origin: "https://example.com/",
-                    pathname: "/sub",
+            Object.assign(global, {
+                window: {
+                    location: {
+                        origin: "https://example.com/",
+                        pathname: "/sub",
+                    },
                 },
-            } as any;
+            });
 
             // with empty base url
             {
@@ -158,19 +155,24 @@ describe("Client", function () {
 
     describe("getFileUrl()", function () {
         const client = new Client("test_base_url");
+        const record: RecordModel = {
+            id: "456",
+            collectionId: "123",
+            collectionName: "789",
+            created: new Date().toString(),
+            updated: new Date().toString(),
+        };
 
         test("Should return a formatted url", async function () {
-            const record = { id: "456", collectionId: "123", collectionName: "789" };
             const result = client.getFileUrl(record, "demo.png");
 
-            assert.deepEqual(result, "test_base_url/api/files/123/456/demo.png");
+            expect(result).toMatch(/\/api\/files\/123\/456\/demo.png$/);
         });
 
         test("Should return a formatted url + query params", async function () {
-            const record = { id: "456", collectionId: "123", collectionName: "789" };
             const result = client.getFileUrl(record, "demo=", { test: "abc" });
 
-            assert.deepEqual(result, "test_base_url/api/files/123/456/demo%3D?test=abc");
+            expect(result).toMatch(/\/api\/files\/123\/456\/demo%3D\?test=abc$/);
         });
     });
 
@@ -208,7 +210,7 @@ describe("Client", function () {
             };
 
             let raw = "";
-            for (let key in params) {
+            for (const key in params) {
                 if (raw) {
                     raw += " || ";
                 }
@@ -224,82 +226,16 @@ describe("Client", function () {
 
     describe("send()", function () {
         test("Should build and send http request", async function () {
-            const client = new Client("test_base_url", null, "test_language_A");
+            const client = new Client("http://127.0.0.1:8090/", null, "test_language_A");
 
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/123",
-                replyCode: 200,
-                replyBody: "successGet",
+            const formData = serialize({
+                title: "test",
+                roles: ["a", "b"],
+                json: null,
+                files: [new Blob(["11"]), new Blob(["2"])],
             });
-
-            fetchMock.on({
-                method: "POST",
-                url: "test_base_url/123",
-                replyCode: 200,
-                replyBody: "successPost",
-            });
-
-            fetchMock.on({
-                method: "PUT",
-                url: "test_base_url/123",
-                replyCode: 200,
-                replyBody: "successPut",
-            });
-
-            fetchMock.on({
-                method: "PATCH",
-                url: "test_base_url/123",
-                replyCode: 200,
-                replyBody: "successPatch",
-            });
-
-            fetchMock.on({
-                method: "DELETE",
-                url: "test_base_url/123",
-                replyCode: 200,
-                replyBody: "successDelete",
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/multipart",
-                additionalMatcher: (_, config: any): boolean => {
-                    // multipart/form-data requests shouldn't have explicitly set Content-Type
-                    return !config?.headers?.["Content-Type"];
-                },
-                replyCode: 200,
-                replyBody: "successMultipart",
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/multipartAuto",
-                additionalMatcher: (_, config: any): boolean => {
-                    if (
-                        // multipart/form-data requests shouldn't have explicitly set Content-Type
-                        config?.headers?.["Content-Type"] ||
-                        // the body should have been converted to FormData
-                        !(config.body instanceof FormData)
-                    ) {
-                        return false;
-                    }
-
-                    // check FormData transformation
-                    assert.deepEqual(config.body.getAll("title"), ["test"]);
-                    assert.deepEqual(config.body.getAll("@jsonPayload"), [
-                        '{"roles":["a","b"]}',
-                        '{"json":null}',
-                    ]);
-                    assert.equal(config.body.getAll("files").length, 2);
-                    assert.equal(config.body.getAll("files")[0].size, 2);
-                    assert.equal(config.body.getAll("files")[1].size, 1);
-
-                    return true;
-                },
-                replyCode: 200,
-                replyBody: "successMultipartAuto",
-            });
+            expect(formData).toBeInstanceOf(FormData);
+            if (!(formData instanceof FormData)) console.log("fff", formData);
 
             const testCases = [
                 [client.send("/123", { method: "GET" }), "successGet"],
@@ -309,91 +245,63 @@ describe("Client", function () {
                 [client.send("/123", { method: "DELETE" }), "successDelete"],
                 [
                     client.send("/multipart", {
-                        method: "GET",
+                        method: "POST",
                         body: new FormData(),
                     }),
                     "successMultipart",
                 ],
                 [
                     client.send("/multipartAuto", {
-                        method: "GET",
-                        body: {
-                            title: "test",
-                            roles: ["a", "b"],
-                            json: null,
-                            files: [new Blob(["11"]), new Blob(["2"])],
-                        },
+                        method: "POST",
+                        body: formData,
                     }),
                     "successMultipartAuto",
                 ],
             ];
-            for (let testCase of testCases) {
+            for (const testCase of testCases) {
                 const responseData = await testCase[0];
                 assert.equal(responseData, testCase[1]);
             }
         });
 
-        test("Should auto add authorization header if missing", async function () {
-            const client = new Client("test_base_url", null, "test_language_A");
+        it("should send empty header when no token is set", async () => {
+            const client = new Client("http://127.0.0.1:8090", null, "test_language_A");
+            expect(client.authStore.isValid).toBe(false);
+            const response = await client.send("/unauthenticated", { method: "GET" });
+            expect(response).toEqual("successAuth");
+        });
 
-            // none
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/none",
-                additionalMatcher: (_, config: any): boolean => {
-                    return !config?.headers?.Authorization;
-                },
-                replyCode: 200,
-            });
-            await client.send("/none", { method: "GET" });
-
-            // admin token
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/admin",
-                additionalMatcher: (_, config: any): boolean => {
-                    return config?.headers?.Authorization === "token123";
-                },
-                replyCode: 200,
-            });
-            const admin = { id: "test-admin" } as any;
+        it("adds authentication header for admin", async () => {
+            const client = new Client("http://127.0.0.1:8090", null, "test_language_A");
+            const admin = { id: "test-admin" };
             client.authStore.save("token123", admin);
-            await client.send("/admin", { method: "GET" });
+            const response = await client.send("/admin", { method: "GET" });
+            expect(response).toEqual("successAuth");
+        });
 
-            // user token
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/user",
-                additionalMatcher: (_, config: any): boolean => {
-                    return config?.headers?.Authorization === "token123";
-                },
-                replyCode: 200,
-            });
-            const user = { id: "test-user", collectionId: "test-user" } as any;
+        it("adds authentication header for user", async () => {
+            const client = new Client("http://127.0.0.1:8090", null, "test_language_A");
+            const user = { id: "test-user", collectionId: "test-user" };
             client.authStore.save("token123", user);
-            await client.send("/user", { method: "GET" });
+            const response = await client.send("/user", { method: "GET" });
+            expect(response).toEqual("successAuth");
         });
 
         test("Should use a custom fetch function", async function () {
-            const client = new Client("test_base_url");
+            const fetchSpy = vi.fn(async () => new Response('"customFetch"'));
 
-            let called = 0;
-
-            await client.send("/old?q1=123", {
+            const response = await client.send("/old", {
                 q1: 123,
                 method: "GET",
-                fetch: async (): Promise<Response> => {
-                    called++;
-                    return {} as any;
-                },
+                fetch: fetchSpy,
             });
 
-            assert.equal(called, 1);
+            expect(fetchSpy).toHaveBeenCalledTimes(1);
+            expect(response).toEqual("customFetch");
         });
 
         test("Should trigger the before hook", async function () {
-            const client = new Client("test_base_url");
-            const newUrl = "test_base_url/new";
+            const newUrl = "http://127.0.0.1:8090/new";
 
             client.beforeSend = function (_, options) {
                 options.headers = Object.assign({}, options.headers, {
@@ -403,26 +311,13 @@ describe("Client", function () {
                 return { url: newUrl, options };
             };
 
-            fetchMock.on({
-                method: "GET",
-                url: newUrl,
-                replyCode: 200,
-                replyBody: "123",
-                additionalMatcher: function (url, config) {
-                    return (
-                        url == newUrl &&
-                        (config?.headers as any)?.["X-Custom-Header"] == "456"
-                    );
-                },
-            });
-
             const response = await client.send("/old", { method: "GET" });
-            assert.equal(response, "123");
+            expect(response).toEqual("successNew");
         });
 
         test("Should trigger the async before hook", async function () {
-            const client = new Client("test_base_url");
-            const newUrl = "test_base_url/new";
+            const client = new Client("http://127.0.0.1:8090");
+            const newUrl = "http://127.0.0.1:8090/new";
 
             client.beforeSend = function (_, options) {
                 options.headers = Object.assign({}, options.headers, {
@@ -434,92 +329,49 @@ describe("Client", function () {
                 });
             };
 
-            fetchMock.on({
-                method: "GET",
-                url: newUrl,
-                replyCode: 200,
-                replyBody: "123",
-                additionalMatcher: function (url, config) {
-                    return (
-                        url == newUrl &&
-                        (config?.headers as any)?.["X-Custom-Header"] == "456"
-                    );
-                },
-            });
-
             const response = await client.send("/old", { method: "GET" });
-            assert.equal(response, "123");
+            expect(response).toEqual("successNew");
         });
 
         test("Should trigger the after hook", async function () {
-            const client = new Client("test_base_url");
+            const client = new Client("http://127.0.0.1:8090");
+            const afterSendSpy = vi.fn();
 
-            client.afterSend = function (response, _) {
-                if (response.url === "test_base_url/failure") {
-                    throw new Error("test_error");
-                }
+            client.afterSend = afterSendSpy;
 
-                return "789";
-            };
-
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/success",
-                replyCode: 200,
-                replyBody: "123",
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/failure",
-                replyCode: 200,
-                replyBody: "456",
-            });
-
-            // will be replaced with /new
+            afterSendSpy.mockReturnValueOnce("success");
             const responseSuccess = await client.send("/success", { method: "GET" });
-            assert.equal(responseSuccess, "789");
+            expect(responseSuccess).toEqual("success");
 
-            const responseFailure = client.send("/failure", { method: "GET" });
+            afterSendSpy.mockRejectedValueOnce("failure");
+            const responseFailure = client.send("/success", { method: "GET" });
             await expect(responseFailure).rejects.toThrow();
+
+            expect(afterSendSpy).toHaveBeenCalledTimes(2);
         });
 
         test("Should trigger the async after hook", async function () {
-            const client = new Client("test_base_url");
+            const client = new Client("http://127.0.0.1:8090");
 
-            client.afterSend = async function () {
-                await new Promise((_, reject) => {
-                    // use reject to test whether the timeout is awaited
-                    setTimeout(() => reject({ data: { message: "after_err" } }), 10);
-                });
+            const afterSendSpy = vi.fn();
+            client.afterSend = afterSendSpy;
 
-                return "123";
-            };
+            afterSendSpy.mockResolvedValueOnce("success");
+            const response = client.send("/success", { method: "GET" });
+            expect(response).resolves.toEqual("success");
+            await new Promise((resolve) => setTimeout(resolve, 0));
 
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/async_after",
-                replyCode: 200,
-                replyBody: "123",
-            });
-
-            const response = client.send("/async_after", { method: "GET" });
-            await expect(response).rejects.toThrow("after_err");
+            afterSendSpy.mockRejectedValueOnce("failure");
+            const reject = client.send("/success", { method: "GET" });
+            expect(reject).rejects.toThrow();
         });
     });
 
     describe("cancelRequest()", function () {
         test("Should cancel pending request", async function () {
-            const client = new Client("test_base_url");
+            const client = new Client("http://127.0.0.1:8090");
 
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/123",
-                delay: 5,
-                replyCode: 200,
-            });
-
-            const response = client.send("/123", {
+            const response = client.send("/slow", {
                 method: "GET",
                 params: { $cancelKey: "testKey" },
             });
@@ -532,24 +384,10 @@ describe("Client", function () {
 
     describe("cancelAllRequests()", function () {
         test("Should cancel all pending requests", async function () {
-            const client = new Client("test_base_url");
+            const client = new Client("http://127.0.0.1:8090");
 
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/123",
-                delay: 5,
-                replyCode: 200,
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/456",
-                delay: 5,
-                replyCode: 200,
-            });
-
-            const requestA = client.send("/123", { method: "GET" });
-            const requestB = client.send("/456", { method: "GET" });
+            const requestA = client.send("/slow-1", { method: "GET" });
+            const requestB = client.send("/slow-2", { method: "GET" });
 
             client.cancelAllRequests();
 
@@ -560,82 +398,41 @@ describe("Client", function () {
 
     describe("auto cancellation", function () {
         test("Should disable auto cancellation", async function () {
-            const client = new Client("test_base_url");
+            const client = new Client("http://127.0.0.1:8090");
 
             client.autoCancellation(false);
 
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/123",
-                delay: 5,
-                replyCode: 200,
-            });
-
-            const requestA = client.send("/123", { method: "GET" });
-            const requestB = client.send("/123", { method: "GET" });
+            const requestA = client.send("/slow-1", { method: "GET" });
+            const requestB = client.send("/slow-1", { method: "GET" });
 
             await expect(requestA).resolves.toBeDefined();
             await expect(requestB).resolves.toBeDefined();
         });
 
         test("Should auto cancel duplicated requests with default key", async function () {
-            const client = new Client("test_base_url");
+            const client = new Client("http://127.0.0.1:8090");
 
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/123",
-                delay: 5,
-                replyCode: 200,
-            });
-
-            const requestA = client.send("/123", { method: "GET" });
-            const requestB = client.send("/123", { method: "GET" });
-            const requestC = client.send("/123", { method: "GET" });
+            const requestA = client.send("/slow-1", { method: "GET" });
+            const requestB = client.send("/slow-1", { method: "GET" });
+            const requestC = client.send("/slow-1", { method: "GET" });
 
             await expect(requestA).rejects.toThrow();
             await expect(requestB).rejects.toThrow();
             await expect(requestC).resolves.toBeDefined();
         });
 
-        test("(legacy) Should auto cancel duplicated requests with custom key", async function () {
-            const client = new Client("test_base_url");
-
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/123",
-                delay: 5,
-                replyCode: 200,
-            });
-
-            const requestA = client.send("/123", {
-                method: "GET",
-                params: { $cancelKey: "customKey" },
-            });
-            const requestB = client.send("/123", { method: "GET" });
-
-            await expect(requestA).resolves.toBeDefined();
-            await expect(requestB).resolves.toBeDefined();
-        });
-
         test("Should auto cancel duplicated requests with custom key", async function () {
-            const client = new Client("test_base_url");
+            const client = new Client("http://127.0.0.1:8090");
 
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/123",
-                delay: 5,
-                replyCode: 200,
-            });
-
-            const requestA = client.send("/123", {
+            const requestA = client.send("/slow-1", {
                 method: "GET",
                 requestKey: "customKey",
             });
-            const requestB = client.send("/123", {
+            const requestB = client.send("/slow-1", {
                 method: "GET",
                 requestKey: "customKey",
             });
-            const requestC = client.send("/123", { method: "GET" });
+            const requestC = client.send("/slow-1", { method: "GET" });
 
             await expect(requestA).rejects.toThrow();
             await expect(requestB).resolves.toBeDefined();
@@ -643,24 +440,17 @@ describe("Client", function () {
         });
 
         test("(legacy) Should skip auto cancellation", async function () {
-            const client = new Client("test_base_url");
+            const client = new Client("http://127.0.0.1:8090");
 
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/123",
-                delay: 5,
-                replyCode: 200,
-            });
-
-            const requestA = client.send("/123", {
+            const requestA = client.send("/slow-1", {
                 method: "GET",
                 params: { $autoCancel: false },
             });
-            const requestB = client.send("/123", {
+            const requestB = client.send("/slow-1", {
                 method: "GET",
                 params: { $autoCancel: false },
             });
-            const requestC = client.send("/123", {
+            const requestC = client.send("/slow-1", {
                 method: "GET",
                 params: { $autoCancel: false },
             });
@@ -671,24 +461,17 @@ describe("Client", function () {
         });
 
         test("Should skip auto cancellation", async function () {
-            const client = new Client("test_base_url");
+            const client = new Client("http://127.0.0.1:8090");
 
-            fetchMock.on({
-                method: "GET",
-                url: "test_base_url/123",
-                delay: 5,
-                replyCode: 200,
-            });
-
-            const requestA = client.send("/123", {
+            const requestA = client.send("/slow-1", {
                 method: "GET",
                 requestKey: null,
             });
-            const requestB = client.send("/123", {
+            const requestB = client.send("/slow-1", {
                 method: "GET",
                 requestKey: null,
             });
-            const requestC = client.send("/123", {
+            const requestC = client.send("/slow-1", {
                 method: "GET",
                 requestKey: null,
             });

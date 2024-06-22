@@ -47,6 +47,8 @@
         "@types/node": "^20.14.2",
         "browserslist-to-esbuild": "^2.1.1",
         "eslint": "^8.57.0",
+        "msw": "^2.3.1",
+        "object-to-formdata": "^4.5.1",
         "prettier": "3.3.2",
         "typescript": "^5.4.5",
         "typescript-eslint": "^7.13.0",

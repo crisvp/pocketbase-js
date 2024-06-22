@@ -6,19 +6,27 @@ import {
     afterAll,
     beforeEach,
     afterEach,
+    vi,
 } from "vitest";
 import { crudServiceTestsSuite } from "../suites";
 import { FetchMock, dummyJWT } from "../mocks";
 import Client from "@/Client";
 import { AdminService } from "@/services/AdminService";
 import { AdminModel } from "@/services/utils/dtos";
+import { setupServer } from "../fixtures/mockApi";
+
+vi.mock("../mocks");
 
 describe("AdminService", function () {
+    const server = setupServer();
     let client!: Client;
     let service!: AdminService;
 
+    beforeAll(() => server.listen());
+    afterAll(() => server.close());
+
     function initService() {
-        client = new Client("test_base_url");
+        client = new Client("http://127.0.0.1:8090");
         service = new AdminService(client);
     }
 

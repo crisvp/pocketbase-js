@@ -16,6 +16,8 @@ import {
     FileOptions,
     normalizeUnknownQueryParams,
 } from "@/services/utils/options";
+import { hasBlobField } from "./formData";
+import { serialize as convertToFormData } from "object-to-formdata";
 
 export interface BeforeSendResult extends Record<string, unknown> {
     url?: string;
@@ -328,7 +330,7 @@ export class Client {
             delete options.query;
         }
 
-        const fetchFunc = options.fetch || fetch;
+        const fetchFunc = options.fetch ?? fetch;
 
         try {
             const response = await fetchFunc(url, options);
@@ -336,7 +338,7 @@ export class Client {
 
             if (response.status >= 400) {
                 throw new ClientResponseError({
-                    url: response.url,
+                    url: response.url ?? url ?? "<unknown url>",
                     status: response.status,
                     data,
                 });
@@ -345,7 +347,7 @@ export class Client {
             return this.afterSend ? await this.afterSend(response, data) : (data as T);
         } catch (err) {
             // wrap to normalize all errors
-            throw new ClientResponseError(err);
+            throw new ClientResponseError({ err, url: url ?? "<unknown url>" });
         }
     }
 
@@ -360,7 +362,7 @@ export class Client {
         options = Object.assign({ method: "GET" } as SendOptions, options);
 
         // auto convert the body to FormData, if needed
-        options.body = this.convertToFormDataIfNeeded(options.body);
+        if (options.body) options.body = this.convertToFormDataIfNeeded(options.body);
 
         // move unknown send options as query parameters
         normalizeUnknownQueryParams(options);
@@ -436,55 +438,11 @@ export class Client {
      * Converts analyzes the provided body and converts it to FormData
      * in case a plain object with File/Blob values is used.
      */
-    private convertToFormDataIfNeeded<T = unknown>(body: T): FormData | T {
+    convertToFormDataIfNeeded<T extends BodyInit>(body: T): FormData | T {
         if (this.isFormData(body)) return body;
-        if (!this.hasBlobField(body)) return body;
+        if (!hasBlobField(body)) return body;
 
-        if (
-            typeof FormData === "undefined" ||
-            typeof body === "undefined" ||
-            typeof body !== "object" ||
-            body === null
-        ) {
-            return body;
-        }
-
-        const form = new FormData();
-
-        Object.entries(body).forEach(([key, val]) => {
-            if (typeof val === "object" && !this.hasBlobField({ data: val })) {
-                // send json-like values as jsonPayload to avoid the implicit string value normalization
-                const payload: Record<string, unknown> = {};
-                payload[key] = val;
-                form.append("@jsonPayload", JSON.stringify(payload));
-            } else {
-                // in case of mixed string and file/blob
-                const normalizedVal = Array.isArray(val) ? val : [val];
-                for (const v of normalizedVal) {
-                    form.append(key, v);
-                }
-            }
-        });
-
-        return form;
-    }
-
-    /**
-     * Checks if the submitted body object has at least one Blob/File field.
-     */
-    private hasBlobField(body: unknown): boolean {
-        if (typeof body !== "object" || body === null) return false;
-
-        for (const val of Object.values(body)) {
-            if (
-                (typeof Blob !== "undefined" && val instanceof Blob) ||
-                (typeof File !== "undefined" && val instanceof File)
-            ) {
-                return true;
-            }
-        }
-
-        return false;
+        return convertToFormData(body);
     }
 
     /**
