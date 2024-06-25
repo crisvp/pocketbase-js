@@ -2,16 +2,11 @@ import { describe, assert, test, beforeAll, afterAll, afterEach } from "vitest";
 import { FetchMock } from "../mocks";
 import Client from "@/Client";
 import { FileService } from "@/services/FileService";
-import { setupServer } from "../fixtures/mockApi";
 
 describe("FileService", function () {
-    const client = new Client("http://127.0.0.1:8090");
+    const client = new Client("http://test.host");
     const service = new FileService(client);
     const fetchMock = new FetchMock();
-
-    const server = setupServer();
-    beforeAll(() => server.listen());
-    afterAll(() => server.close());
 
     beforeAll(function () {
         fetchMock.init();

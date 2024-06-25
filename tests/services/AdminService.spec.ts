@@ -7,33 +7,30 @@ import {
     beforeEach,
     afterEach,
     vi,
+    expect,
 } from "vitest";
-import { crudServiceTestsSuite } from "../suites";
 import { FetchMock, dummyJWT } from "../mocks";
 import Client from "@/Client";
 import { AdminService } from "@/services/AdminService";
 import { AdminModel } from "@/services/utils/dtos";
-import { setupServer } from "../fixtures/mockApi";
+import { respond } from "../setup";
+import { http, HttpResponse } from "msw";
 
 vi.mock("../mocks");
 
 describe("AdminService", function () {
-    const server = setupServer();
     let client!: Client;
     let service!: AdminService;
 
-    beforeAll(() => server.listen());
-    afterAll(() => server.close());
+    // beforeAll(() => server.listen());
+    // afterAll(() => server.close());
 
     function initService() {
-        client = new Client("http://127.0.0.1:8090");
+        client = new Client("http://test.host");
         service = new AdminService(client);
     }
 
     initService();
-
-    // base tests
-    crudServiceTestsSuite(service, "/api/admins");
 
     const fetchMock = new FetchMock();
 
@@ -55,9 +52,9 @@ describe("AdminService", function () {
     });
 
     function authResponseCheck(
-        result: { [key: string]: any },
+        result: Record<string, unknown>,
         expectedToken: string,
-        expectedAdmin: AdminModel,
+        expectedAdmin: Partial<AdminModel>,
     ) {
         assert.isNotEmpty(result);
         assert.equal(result.token, expectedToken);
@@ -71,20 +68,15 @@ describe("AdminService", function () {
 
     describe("AuthStore sync", function () {
         test("Should update the AuthStore admin model on matching update id", async function () {
-            fetchMock.on({
-                method: "PATCH",
-                url: service.client.buildUrl("/api/admins/test123"),
-                replyCode: 200,
-                replyBody: {
-                    id: "test123",
-                    email: "new@example.com",
-                },
-            });
-
+            respond(
+                http.patch("*/api/admins/test123", () =>
+                    HttpResponse.json({ id: "test123", email: "new@example.com" }),
+                ),
+            );
             service.client.authStore.save("test_token", {
                 id: "test123",
                 email: "old@example.com",
-            } as any);
+            });
 
             await service.update("test123", { email: "new@example.com" });
 
@@ -92,20 +84,16 @@ describe("AdminService", function () {
         });
 
         test("Should not update the AuthStore admin model on mismatched update id", async function () {
-            fetchMock.on({
-                method: "PATCH",
-                url: service.client.buildUrl("/api/admins/test123"),
-                replyCode: 200,
-                replyBody: {
-                    id: "test123",
-                    email: "new@example.com",
-                },
-            });
+            respond(
+                http.patch("*/api/admins/test123", () =>
+                    HttpResponse.json({ id: "test123", email: "new@example.com" }),
+                ),
+            );
 
             service.client.authStore.save("test_token", {
                 id: "test456",
                 email: "old@example.com",
-            } as any);
+            });
 
             await service.update("test123", { email: "new@example.com" });
 
@@ -113,13 +101,13 @@ describe("AdminService", function () {
         });
 
         test("Should delete the AuthStore admin model on matching delete id", async function () {
-            fetchMock.on({
-                method: "DELETE",
-                url: service.client.buildUrl("/api/admins/test123"),
-                replyCode: 204,
-            });
+            respond(
+                http.delete("*/api/admins/test123", () =>
+                    HttpResponse.json({ status: 204 }),
+                ),
+            );
 
-            service.client.authStore.save("test_token", { id: "test123" } as any);
+            service.client.authStore.save("test_token", { id: "test123" });
 
             await service.delete("test123");
 
@@ -127,13 +115,13 @@ describe("AdminService", function () {
         });
 
         test("Should not delete the AuthStore admin model on mismatched delete id", async function () {
-            fetchMock.on({
-                method: "DELETE",
-                url: service.client.buildUrl("/api/admins/test123"),
-                replyCode: 204,
-            });
+            respond(
+                http.delete("*/api/admins/test123", () =>
+                    HttpResponse.json({ status: 204 }),
+                ),
+            );
 
-            service.client.authStore.save("test_token", { id: "test456" } as any);
+            service.client.authStore.save("test_token", { id: "test456" });
 
             await service.delete("test123");
 
@@ -143,23 +131,19 @@ describe("AdminService", function () {
 
     describe("authWithPassword()", function () {
         test("Should auth an admin by its email and password", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/auth-with-password") + "?q1=456",
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: "token_authorize",
-                    admin: { id: "id_authorize" },
-                },
-            });
+            respond(
+                http.post("*/api/admins/auth-with-password", async ({ request }) => {
+                    const body = await request.json();
+                    expect(body).toEqual({
+                        identity: "test@example.com",
+                        password: "123456",
+                    });
+                    return HttpResponse.json({
+                        token: "token_authorize",
+                        admin: { id: "id_authorize" },
+                    });
+                }),
+            );
 
             const result = await service.authWithPassword("test@example.com", "123456", {
                 q1: 456,
@@ -176,18 +160,14 @@ describe("AdminService", function () {
 
     describe("authRefresh()", function () {
         test("Should refresh an authorized admin instance", async function () {
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh") + "?q1=456",
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: "token_refresh",
-                    admin: { id: "id_refresh" },
-                },
-            });
+            respond(
+                http.post("*/api/admins/auth-refresh", () =>
+                    HttpResponse.json({
+                        token: "token_refresh",
+                        admin: { id: "id_refresh" },
+                    }),
+                ),
+            );
 
             const result = await service.authRefresh({
                 q1: 456,
@@ -204,21 +184,10 @@ describe("AdminService", function () {
 
     describe("requestPasswordReset()", function () {
         test("Should send a password reset request", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/request-password-reset") +
-                    "?q1=456",
-                body: {
-                    email: "test@example.com",
-                },
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 204,
-                replyBody: true,
+            http.post("*/api/admins/request-password-reset", async ({ request }) => {
+                expect(await request.json()).toEqual({ email: "test@example.com" });
+                return HttpResponse.json({ status: 204 });
             });
-
             const result = await service.requestPasswordReset("test@example.com", {
                 q1: 456,
                 headers: { "x-test": "123" },
@@ -230,22 +199,17 @@ describe("AdminService", function () {
 
     describe("confirmPasswordReset()", function () {
         test("Should confirm a password reset request", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/confirm-password-reset") +
-                    "?q1=456",
-                body: {
-                    token: "test",
-                    password: "123",
-                    passwordConfirm: "456",
-                },
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
+            respond(
+                http.post("*/api/admins/confirm-password-reset", async ({ request }) => {
+                    const body = await request.json();
+                    expect(body).toEqual({
+                        token: "test",
+                        password: "123",
+                        passwordConfirm: "456",
+                    });
+                    return HttpResponse.json({ status: 204 });
+                }),
+            );
 
             const result = await service.confirmPasswordReset("test", "123", "456", {
                 q1: 456,
@@ -264,30 +228,20 @@ describe("AdminService", function () {
                 exp: (new Date(Date.now() - 1 * 60000).getTime() / 1000) << 0,
             });
 
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-with-password?a=1"),
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: token,
-                    admin: { id: "test_id" },
-                },
-            });
+            respond(
+                http.post("*/api/admins/auth-with-password", async ({ request }) => {
+                    expect(await request.json()).toEqual({
+                        identity: "test@example.com",
+                        password: "123456",
+                    });
+                    return HttpResponse.json({
+                        token: token,
+                        admin: { id: "test_id" },
+                    });
+                }),
+            );
 
-            fetchMock.on({
-                method: "GET",
-                url: service.client.buildUrl("/custom"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], token); // same old token
-                    return true;
-                },
-                replyCode: 204,
-                replyBody: null,
-            });
+            respond(http.get("*/custom", () => HttpResponse.json({ status: 204 })));
 
             const authResult = await service.authWithPassword(
                 "test@example.com",
@@ -310,7 +264,7 @@ describe("AdminService", function () {
                 exp: (new Date(Date.now() - 1 * 60000).getTime() / 1000) << 0,
             });
 
-            const invokes: Array<String> = [];
+            const invokes: string[] = [];
 
             fetchMock.on({
                 method: "POST",

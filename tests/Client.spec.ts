@@ -3,21 +3,15 @@ import Client from "@/Client";
 import { LocalAuthStore } from "@/stores/LocalAuthStore";
 import { RecordService } from "@/services/RecordService";
 import { RecordModel } from "@/services/utils/dtos";
-import { setupServer } from "./fixtures/mockApi";
 import { serialize } from "object-to-formdata";
 import { it } from "node:test";
 
 describe("Client", function () {
-    const server = setupServer();
-    const client = new Client("http://127.0.0.1:8090", null, "test_language");
+    const client = new Client("http://test.host", null, "test_language");
 
-    beforeAll(function () {
-        server.listen({ onUnhandledRequest: "error" });
-    });
-
-    afterAll(function () {
-        server.close();
-    });
+    // beforeAll(function () {
+    //     server.listen({ onUnhandledRequest: "error" });
+    // });
 
     // afterEach(function () {
     //     fetchMock.clearMocks();
@@ -25,7 +19,7 @@ describe("Client", function () {
 
     describe("constructor()", function () {
         test("Should create a properly configured http client instance", function () {
-            assert.equal(client.baseUrl, "http://127.0.0.1:8090");
+            assert.equal(client.baseUrl, "http://test.host");
             assert.instanceOf(client.authStore, LocalAuthStore);
             assert.equal(client.lang, "test_language");
         });
@@ -226,7 +220,7 @@ describe("Client", function () {
 
     describe("send()", function () {
         test("Should build and send http request", async function () {
-            const client = new Client("http://127.0.0.1:8090/", null, "test_language_A");
+            const client = new Client("http://test.host/", null, "test_language_A");
 
             const formData = serialize({
                 title: "test",
@@ -265,14 +259,14 @@ describe("Client", function () {
         });
 
         it("should send empty header when no token is set", async () => {
-            const client = new Client("http://127.0.0.1:8090", null, "test_language_A");
+            const client = new Client("http://test.host", null, "test_language_A");
             expect(client.authStore.isValid).toBe(false);
             const response = await client.send("/unauthenticated", { method: "GET" });
             expect(response).toEqual("successAuth");
         });
 
         it("adds authentication header for admin", async () => {
-            const client = new Client("http://127.0.0.1:8090", null, "test_language_A");
+            const client = new Client("http://test.host", null, "test_language_A");
             const admin = { id: "test-admin" };
             client.authStore.save("token123", admin);
             const response = await client.send("/admin", { method: "GET" });
@@ -280,7 +274,7 @@ describe("Client", function () {
         });
 
         it("adds authentication header for user", async () => {
-            const client = new Client("http://127.0.0.1:8090", null, "test_language_A");
+            const client = new Client("http://test.host", null, "test_language_A");
             const user = { id: "test-user", collectionId: "test-user" };
             client.authStore.save("token123", user);
             const response = await client.send("/user", { method: "GET" });
@@ -301,7 +295,7 @@ describe("Client", function () {
         });
 
         test("Should trigger the before hook", async function () {
-            const newUrl = "http://127.0.0.1:8090/new";
+            const newUrl = "http://test.host/new";
 
             client.beforeSend = function (_, options) {
                 options.headers = Object.assign({}, options.headers, {
@@ -316,8 +310,8 @@ describe("Client", function () {
         });
 
         test("Should trigger the async before hook", async function () {
-            const client = new Client("http://127.0.0.1:8090");
-            const newUrl = "http://127.0.0.1:8090/new";
+            const client = new Client("http://test.host");
+            const newUrl = "http://test.host/new";
 
             client.beforeSend = function (_, options) {
                 options.headers = Object.assign({}, options.headers, {
@@ -334,7 +328,7 @@ describe("Client", function () {
         });
 
         test("Should trigger the after hook", async function () {
-            const client = new Client("http://127.0.0.1:8090");
+            const client = new Client("http://test.host");
             const afterSendSpy = vi.fn();
 
             client.afterSend = afterSendSpy;
@@ -351,7 +345,7 @@ describe("Client", function () {
         });
 
         test("Should trigger the async after hook", async function () {
-            const client = new Client("http://127.0.0.1:8090");
+            const client = new Client("http://test.host");
 
             const afterSendSpy = vi.fn();
             client.afterSend = afterSendSpy;
@@ -369,7 +363,7 @@ describe("Client", function () {
 
     describe("cancelRequest()", function () {
         test("Should cancel pending request", async function () {
-            const client = new Client("http://127.0.0.1:8090");
+            const client = new Client("http://test.host");
 
             const response = client.send("/slow", {
                 method: "GET",
@@ -384,7 +378,7 @@ describe("Client", function () {
 
     describe("cancelAllRequests()", function () {
         test("Should cancel all pending requests", async function () {
-            const client = new Client("http://127.0.0.1:8090");
+            const client = new Client("http://test.host");
 
             const requestA = client.send("/slow-1", { method: "GET" });
             const requestB = client.send("/slow-2", { method: "GET" });
@@ -398,7 +392,7 @@ describe("Client", function () {
 
     describe("auto cancellation", function () {
         test("Should disable auto cancellation", async function () {
-            const client = new Client("http://127.0.0.1:8090");
+            const client = new Client("http://test.host");
 
             client.autoCancellation(false);
 
@@ -410,7 +404,7 @@ describe("Client", function () {
         });
 
         test("Should auto cancel duplicated requests with default key", async function () {
-            const client = new Client("http://127.0.0.1:8090");
+            const client = new Client("http://test.host");
 
             const requestA = client.send("/slow-1", { method: "GET" });
             const requestB = client.send("/slow-1", { method: "GET" });
@@ -422,7 +416,7 @@ describe("Client", function () {
         });
 
         test("Should auto cancel duplicated requests with custom key", async function () {
-            const client = new Client("http://127.0.0.1:8090");
+            const client = new Client("http://test.host");
 
             const requestA = client.send("/slow-1", {
                 method: "GET",
@@ -440,7 +434,7 @@ describe("Client", function () {
         });
 
         test("(legacy) Should skip auto cancellation", async function () {
-            const client = new Client("http://127.0.0.1:8090");
+            const client = new Client("http://test.host");
 
             const requestA = client.send("/slow-1", {
                 method: "GET",
@@ -461,7 +455,7 @@ describe("Client", function () {
         });
 
         test("Should skip auto cancellation", async function () {
-            const client = new Client("http://127.0.0.1:8090");
+            const client = new Client("http://test.host");
 
             const requestA = client.send("/slow-1", {
                 method: "GET",

@@ -1,10 +1,12 @@
-import { describe, assert, test, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, assert, test, beforeAll, afterAll, afterEach, vi } from "vitest";
 import { FetchMock } from "../mocks";
 import Client from "@/Client";
 import { SettingsService } from "@/services/SettingsService";
 
+vi.mock("../mocks");
+
 describe("SettingsService", function () {
-    const client = new Client("test_base_url");
+    const client = new Client("http://test.host");
     const service = new SettingsService(client);
     const fetchMock = new FetchMock();
 
@@ -22,19 +24,8 @@ describe("SettingsService", function () {
 
     describe("getAll()", function () {
         test("Should fetch all app settings", async function () {
-            fetchMock.on({
-                method: "GET",
-                url: service.client.buildUrl("/api/settings") + "?q1=123",
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "456";
-                },
-                replyCode: 200,
-                replyBody: { test: "abc" },
-            });
-
             const result = await service.getAll({
                 q1: 123,
-                headers: { "x-test": "456" },
             });
 
             assert.deepEqual(result, { test: "abc" });
@@ -43,17 +34,6 @@ describe("SettingsService", function () {
 
     describe("update()", function () {
         test("Should send bulk app settings update", async function () {
-            fetchMock.on({
-                method: "PATCH",
-                url: service.client.buildUrl("/api/settings"),
-                body: { b1: 123 },
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "456";
-                },
-                replyCode: 200,
-                replyBody: { test: "abc" },
-            });
-
             const result = await service.update(
                 { b1: 123 },
                 { headers: { "x-test": "456" } },

@@ -332,23 +332,20 @@ export class Client {
 
         const fetchFunc = options.fetch ?? fetch;
 
-        try {
-            const response = await fetchFunc(url, options);
-            const data = await response.json();
+        const response = await fetchFunc(url, options);
+        if (response.status === 204) return {} as T;
 
-            if (response.status >= 400) {
-                throw new ClientResponseError({
-                    url: response.url ?? url ?? "<unknown url>",
-                    status: response.status,
-                    data,
-                });
-            }
+        const data = await response.json();
 
-            return this.afterSend ? await this.afterSend(response, data) : (data as T);
-        } catch (err) {
-            // wrap to normalize all errors
-            throw new ClientResponseError({ err, url: url ?? "<unknown url>" });
+        if (response.status >= 400) {
+            throw new ClientResponseError({
+                url: response.url ?? url ?? "<unknown url>",
+                status: response.status,
+                data,
+            });
         }
+
+        return this.afterSend ? await this.afterSend(response, data) : (data as T);
     }
 
     /**

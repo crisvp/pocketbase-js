@@ -1,15 +1,13 @@
 import { describe, assert, test, beforeAll, afterAll } from "vitest";
 import Client from "@/Client";
 import { BackupService } from "@/services/BackupService";
-import { setupServer } from "../fixtures/mockApi";
 
 describe("BackupService", function () {
-    const server = setupServer();
-    const client = new Client("http://127.0.0.1:8090");
+    const client = new Client("http://test.host");
     const service = new BackupService(client);
 
-    beforeAll(() => server.listen());
-    afterAll(() => server.close());
+    // beforeAll(() => server.listen());
+    // afterAll(() => server.close());
 
     describe("getFullList()", function () {
         test("Should fetch all backups", async function () {

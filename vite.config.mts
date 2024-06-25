@@ -4,6 +4,11 @@ import { defineConfig } from "vite";
 import browserslistToEsbuild from "browserslist-to-esbuild";
 import dts from "vite-plugin-dts";
 
+import { coverageConfigDefaults } from "vitest/config";
+import { pathsToModuleNameMapper } from "ts-jest";
+
+import tsConfig from "./tsconfig.json";
+
 export default defineConfig(({ mode }) => {
     return {
         plugins: [
@@ -34,12 +39,15 @@ export default defineConfig(({ mode }) => {
             },
         },
         test: {
-            typecheck: {
-                tsconfig: "tsconfig.test.json",
-            },
+            environment: "jsdom",
+            setupFiles: ["./tests/setup.ts"],
+            typecheck: { tsconfig: "tsconfig.json" },
             testFiles: ["**/*.test.ts"],
-            transform: {
-                "^.+\\.ts$": "ts-jest",
+            moduleNameMapper: pathsToModuleNameMapper(tsConfig.compilerOptions.paths),
+            coverage: {
+                reporter: ["text", "json", "html"],
+                reportsDirectory: "./tests/coverage",
+                exclude: [...coverageConfigDefaults.exclude, "**/index.ts"],
             },
         },
     };

@@ -11,7 +11,7 @@ export class SettingsService extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async getAll(options?: CommonOptions): Promise<{ [key: string]: any }> {
+    async getAll(options?: CommonOptions): Promise<Record<string, unknown>> {
         options = Object.assign(
             {
                 method: "GET",
@@ -28,9 +28,9 @@ export class SettingsService extends BaseService {
      * @throws {ClientResponseError}
      */
     async update(
-        bodyParams?: { [key: string]: any } | FormData,
+        bodyParams?: Record<string, unknown> | FormData,
         options?: CommonOptions,
-    ): Promise<{ [key: string]: any }> {
+    ): Promise<Record<string, unknown>> {
         options = Object.assign(
             {
                 method: "PATCH",
@@ -49,10 +49,7 @@ export class SettingsService extends BaseService {
      *
      * @throws {ClientResponseError}
      */
-    async testS3(
-        filesystem: string = "storage",
-        options?: CommonOptions,
-    ): Promise<boolean> {
+    async testS3(filesystem = "storage", options?: CommonOptions): Promise<boolean> {
         options = Object.assign(
             {
                 method: "POST",
