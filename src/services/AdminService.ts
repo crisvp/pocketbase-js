@@ -100,7 +100,7 @@ export class AdminService extends CrudService<AdminModel> {
         const autoRefreshThreshold = options.autoRefreshThreshold;
         delete options.autoRefreshThreshold;
 
-        if (!options.autoRefresh) resetAutoRefresh(this.client);
+        if (!autoRefreshThreshold) resetAutoRefresh(this.client);
 
         const request: SendOptions = {
             method: "POST",

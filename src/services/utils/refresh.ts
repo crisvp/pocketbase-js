@@ -54,7 +54,8 @@ export function registerAutoRefresh(
         ) {
             try {
                 await refreshFunc();
-            } catch (_) {
+            } catch (e) {
+                console.error("Auto refresh failed.", e);
                 isValid = false;
             }
         }
