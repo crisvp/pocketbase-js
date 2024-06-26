@@ -1,16 +1,12 @@
-import { describe, assert, test, vi, expect } from 'vitest';
-import { FetchMock } from '../mocks';
+import { describe, assert, test, expect } from 'vitest';
 import Client from '@/Client';
 import { SettingsService } from '@/services/SettingsService';
 import { respond } from '../setup';
 import { http, HttpResponse } from 'msw';
 
-vi.mock('../mocks');
-
 describe('SettingsService', function () {
   const client = new Client('http://test.host');
   const service = new SettingsService(client);
-  const fetchMock = new FetchMock();
 
   describe('getAll()', function () {
     test('Should fetch all app settings', async function () {
@@ -46,16 +42,6 @@ describe('SettingsService', function () {
 
   describe('testS3()', function () {
     test('Should send S3 connection test request', async function () {
-      fetchMock.on({
-        method: 'POST',
-        url: service.client.buildUrl('/api/settings/test/s3') + '?q1=123',
-        body: { filesystem: 'storage' },
-        additionalMatcher: (_, config) => {
-          return config?.headers?.['x-test'] === '456';
-        },
-        replyCode: 204,
-        replyBody: true,
-      });
       respond(
         http.post('*/api/settings/test/s3', async ({ request }) => {
           expect(await request.json()).toEqual({ filesystem: 'storage' });
@@ -95,25 +81,6 @@ describe('SettingsService', function () {
 
   describe('generateAppleClientSecret()', function () {
     test('Should send an Apple OAuth2 client secret request', async function () {
-      // fetchMock.on({
-      //     method: "POST",
-      //     url:
-      //         service.client.buildUrl(
-      //             "/api/settings/apple/generate-client-secret",
-      //         ) + "?q1=123",
-      //     body: {
-      //         clientId: "1",
-      //         teamId: "2",
-      //         keyId: "3",
-      //         privateKey: "4",
-      //         duration: 5,
-      //     },
-      //     additionalMatcher: (_, config) => {
-      //         return config?.headers?.["x-test"] === "456";
-      //     },
-      //     replyCode: 204,
-      //     replyBody: { secret: "test" },
-      // });
       respond(
         http.post('*/api/settings/apple/generate-client-secret', async ({ request }) => {
           expect(await request.json()).toEqual({
