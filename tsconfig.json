@@ -1,22 +1,22 @@
 {
-    "compilerOptions": {
-        "checkJs": true,
-        "declaration": true,
-        "moduleResolution": "NodeNext",
-        "sourceMap": true,
-        "target": "ESNext",
-        "module": "NodeNext",
-        "strict": true,
-        "esModuleInterop": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "forceConsistentCasingInFileNames": true,
-        "baseUrl": ".",
-        "outDir": "./build",
-        "paths": {
-            "@/*": ["./src/*"]
-        }
-    },
-    "include": ["./src"]
+  "compilerOptions": {
+    "checkJs": true,
+    "declaration": true,
+    "moduleResolution": "NodeNext",
+    "sourceMap": true,
+    "target": "ESNext",
+    "module": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "outDir": "./build",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["./src"]
 }

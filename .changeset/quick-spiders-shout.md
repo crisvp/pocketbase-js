@@ -1,5 +1,5 @@
 ---
-"@crisvp/pocketbase-js": patch
+'@crisvp/pocketbase-js': patch
 ---
 
 add browerslist and changeset

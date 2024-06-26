@@ -1,0 +1,17 @@
+node_modules
+dist
+build
+coverage
+.next
+.nuxt
+.parcel-cache
+.cache
+.vscode
+.idea
+.DS_Store
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+*.log
+vi*.timestamp-*

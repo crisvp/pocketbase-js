@@ -1,7 +1,7 @@
 {
-    "extends": "../tsconfig.json",
-    "include": ["setup.ts", "test.ts", "*.mts", "./**/*.ts"],
-    "alias": {
-        "@": "../src"
-    }
+  "extends": "../tsconfig.json",
+  "include": ["setup.ts", "test.ts", "*.mts", "./**/*.ts"],
+  "alias": {
+    "@": "../src"
+  }
 }
