@@ -2,8 +2,7 @@
 
 This is a fork of the official JavaScript SDK (browser and node) for interacting with the [PocketBase API](https://pocketbase.io/docs).
 
-It incorporates some fixes to make it play more nicely with node and other consumers.
-
+- [Differences from official SDK](#differences)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Caveats](#caveats)
@@ -23,6 +22,19 @@ It incorporates some fixes to make it play more nicely with node and other consu
   - [Security](#security)
 - [Definitions](#definitions)
 - [Development](#development)
+
+## Differences
+
+At the moment, this fork does not differ too much in usage from the
+official SDK.
+
+It is more strongly typed, and more opinionated on the data it receives.
+
+This SDK will throw more errors during development and linting, and will
+not quietly ignore exceptions.
+
+Most features marked as "legacy" or "deprecated" have been removed. The
+rest will be removed in a future version.
 
 ## Installation
 
