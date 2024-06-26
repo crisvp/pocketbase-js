@@ -146,9 +146,12 @@ export class AdminService extends CrudService<AdminModel> {
     async authRefresh(options?: CommonOptions): Promise<AdminAuthResponse> {
         options = { method: "POST", ...options };
 
-        return this.client
-            .send<AdminAuthResponse>(this.baseCrudPath + "/auth-refresh", options)
-            .then(this.authResponse.bind(this));
+        const result = await this.client.send<AdminAuthResponse>(
+            this.baseCrudPath + "/auth-refresh",
+            options,
+        );
+        this.client.authStore.save(result.token, result.admin);
+        return result;
     }
 
     /**

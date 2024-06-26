@@ -1,17 +1,29 @@
-import { describe, assert, beforeEach, vi } from "vitest";
+import { describe, assert, beforeEach, vi, afterEach } from "vitest";
 import Client from "@/Client";
 import { RecordAuthResponse, RecordService } from "@/services/RecordService";
 import { RecordModel } from "@/services/utils/dtos";
 
 import { test } from "../test";
 import { http, HttpResponse } from "msw";
-import { respond } from "../setup";
+import { dummyJWT, respond } from "../setup";
 
-vi.mock("../mocks");
+describe("RecordService", async () => {
+    let client: Client;
+    let service: RecordService;
 
-describe("RecordService", function () {
-    const client = new Client("http://test.host");
-    const service = new RecordService(client, "sub=");
+    beforeEach(() => {
+        client = new Client("http://test.host");
+        service = new RecordService(client, "sub=");
+    });
+
+    const authToken = await dummyJWT({ id: "test123", collectionId: "456" });
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        const date = new Date(2000, 1, 1, 13);
+        vi.setSystemTime(date);
+    });
+    afterEach(() => void vi.clearAllMocks());
 
     beforeEach(function () {
         service.client.authStore.clear(); // reset
@@ -25,7 +37,7 @@ describe("RecordService", function () {
                 ),
             );
 
-            service.client.authStore.save("test_token", {
+            service.client.authStore.save(authToken, {
                 id: "test123",
                 collectionName: "sub=",
             });
@@ -42,7 +54,7 @@ describe("RecordService", function () {
                 ),
             );
 
-            service.client.authStore.save("test_token", {
+            service.client.authStore.save(authToken, {
                 id: "test123",
                 email: "old@example.com",
                 collectionName: "diff",
@@ -60,7 +72,7 @@ describe("RecordService", function () {
                 ),
             );
 
-            service.client.authStore.save("test_token", {
+            service.client.authStore.save(authToken, {
                 id: "test456",
                 email: "old@example.com",
                 collectionName: "sub=",
@@ -78,7 +90,7 @@ describe("RecordService", function () {
                 ),
             );
 
-            service.client.authStore.save("test_token", {
+            service.client.authStore.save(authToken, {
                 id: "test123",
                 collectionName: "sub=",
             });
@@ -95,7 +107,7 @@ describe("RecordService", function () {
                 ),
             );
 
-            service.client.authStore.save("test_token", {
+            service.client.authStore.save(authToken, {
                 id: "test123",
                 collectionName: "diff",
             });
@@ -112,7 +124,7 @@ describe("RecordService", function () {
                 ),
             );
 
-            service.client.authStore.save("test_token", {
+            service.client.authStore.save(authToken, {
                 id: "test456",
                 collectionName: "sub=",
             });
@@ -123,8 +135,7 @@ describe("RecordService", function () {
         });
 
         test("Should update the AuthStore record model verified state on matching token data", async function () {
-            const token =
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
+            const token = authToken;
 
             respond(
                 http.post("*/api/collections/sub%3D/confirm-verification", () =>
@@ -132,8 +143,8 @@ describe("RecordService", function () {
                 ),
             );
 
-            service.client.authStore.save("auth_token", {
-                id: "123",
+            service.client.authStore.save(authToken, {
+                id: "test123",
                 collectionId: "456",
                 verified: false,
             });
@@ -145,8 +156,8 @@ describe("RecordService", function () {
         });
 
         test("Should not update the AuthStore record model verified state on mismatched token data", async function () {
-            const token =
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
+            const token = await dummyJWT({ id: "456", collectionId: "789" });
+            // ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c");
 
             respond(
                 http.post("*/api/collections/sub%3D/confirm-verification", () =>
@@ -154,7 +165,7 @@ describe("RecordService", function () {
                 ),
             );
 
-            service.client.authStore.save("auth_token", {
+            service.client.authStore.save(authToken, {
                 id: "123",
                 collectionId: "789",
                 verified: false,
@@ -167,16 +178,16 @@ describe("RecordService", function () {
         });
 
         test("Should delete the AuthStore record model matching the token data", async function () {
-            const token =
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
+            const token = await dummyJWT({ id: "123", collectionId: "456" });
+            // "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
 
             respond(
                 http.post("*/api/collections/sub%3D/confirm-email-change", () =>
-                    HttpResponse.json({ token: token, password: "1234" }),
+                    HttpResponse.json({ token }),
                 ),
             );
 
-            service.client.authStore.save("auth_token", {
+            service.client.authStore.save(authToken, {
                 id: "123",
                 collectionId: "456",
             });
@@ -188,16 +199,16 @@ describe("RecordService", function () {
         });
 
         test("Should not delete the AuthStore record model on mismatched token data", async function () {
-            const token =
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
+            const token = await dummyJWT({ id: "f", collectionId: "789" });
+            // "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiNDU2In0.c9ZkXkC8rSqkKlpyx3kXt9ID3qYsIoy1Vz3a2m3ly0c";
 
             respond(
                 http.post("*/api/collections/sub%3D/confirm-email-change", () =>
-                    HttpResponse.json({ token: "f", password: "1234" }),
+                    HttpResponse.json({ token, password: "1234" }),
                 ),
             );
 
-            service.client.authStore.save("auth_token", {
+            service.client.authStore.save(authToken, {
                 id: "123",
                 collectionId: "789",
             });
@@ -261,7 +272,7 @@ describe("RecordService", function () {
         test("Should authenticate a record by its username/email and password", async function () {
             respond(
                 http.post("*/api/collections/sub%3D/auth-with-password", () =>
-                    HttpResponse.json({ token: "token_auth", record: { id: "id_auth" } }),
+                    HttpResponse.json({ token: authToken, record: { id: "id_auth" } }),
                 ),
             );
             const result = await service.authWithPassword("test@example.com", "123456", {
@@ -269,7 +280,7 @@ describe("RecordService", function () {
                 headers: { "x-test": "789" },
             });
 
-            authResponseCheck(result, "token_auth", { id: "id_auth" });
+            authResponseCheck(result, authToken, { id: "id_auth" });
         });
     });
 
@@ -277,7 +288,7 @@ describe("RecordService", function () {
         test("Should authenticate with OAuth2 a record by an OAuth2 code", async function () {
             respond(
                 http.post("*/api/collections/sub%3D/auth-with-oauth2", () =>
-                    HttpResponse.json({ token: "token_auth", record: { id: "id_auth" } }),
+                    HttpResponse.json({ token: authToken, record: { id: "id_auth" } }),
                 ),
             );
 
@@ -293,7 +304,7 @@ describe("RecordService", function () {
                 },
             );
 
-            authResponseCheck(result, "token_auth", { id: "id_auth" });
+            authResponseCheck(result, authToken, { id: "id_auth" });
         });
     });
 
@@ -306,7 +317,7 @@ describe("RecordService", function () {
             respond(
                 http.get("*/api/collections/sub%3D/auth-refresh", () =>
                     HttpResponse.json({
-                        token: "token_refresh",
+                        token: authToken,
                         record: { id: "id_refresh" },
                     }),
                 ),
@@ -317,17 +328,17 @@ describe("RecordService", function () {
                 headers: { "x-test": "789" },
             });
 
-            authResponseCheck(result, "token_refresh", { id: "id_refresh" });
+            authResponseCheck(result, authToken, { id: "id_refresh" });
         });
     });
 
     describe("confirmPasswordReset()", function () {
-        test("Should confirm a password reset request", async function () {
+        test("Should confirm a password reset request (1)", async function () {
             respond(
                 http.post("*/api/collections/sub%3D/confirm-password-reset", () =>
                     HttpResponse.json(
                         {
-                            token: "test",
+                            authToken,
                             password: "123",
                             passwordConfirm: "456",
                         },
@@ -363,13 +374,14 @@ describe("RecordService", function () {
     });
 
     describe("confirmVerification()", function () {
-        test("Should confirm a password reset request", async function () {
+        test("Should confirm a password reset request (3)", async function () {
             respond(
                 http.post("*/api/collections/sub%3D/confirm-verification", () =>
-                    HttpResponse.json({ token: "test" }),
+                    HttpResponse.json({ token: authToken }),
                 ),
             );
-            const result = await service.confirmVerification("test", {
+
+            const result = await service.confirmVerification(authToken, {
                 q1: 456,
                 headers: { "x-test": "789" },
             });
@@ -397,13 +409,14 @@ describe("RecordService", function () {
 
     describe("confirmEmailChange()", function () {
         test("Should confirm an email change request", async function () {
+            const token = await dummyJWT({ id: "test", collection: "abc" });
             respond(
                 http.post("*/api/collections/sub%3D/confirm-email-change", () =>
-                    HttpResponse.json({ token: "test", password: "1234" }),
+                    HttpResponse.json({ token, password: "1234" }),
                 ),
             );
 
-            const result = await service.confirmEmailChange("test", "1234", {
+            const result = await service.confirmEmailChange(token, "1234", {
                 q1: 456,
                 headers: { "x-test": "789" },
             });
@@ -444,21 +457,6 @@ describe("RecordService", function () {
                     () => HttpResponse.json({ status: 204 }),
                 ),
             );
-            // fetchMock.on({
-            //     method: "DELETE",
-            //     url:
-            //         service.client.buildUrl(service.baseCrudPath) +
-            //         "/" +
-            //         encodeURIComponent("@test_id") +
-            //         "/external-auths/" +
-            //         encodeURIComponent("@test_provider") +
-            //         "?q1=456",
-            //     additionalMatcher: (_, config) => {
-            //         return config?.headers?.["x-test"] === "789";
-            //     },
-            //     replyCode: 204,
-            //     replyBody: true,
-            // });
 
             const result = await service.unlinkExternalAuth(
                 "@test_id",

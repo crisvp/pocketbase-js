@@ -1,7 +1,8 @@
 import { cookieParse, cookieSerialize, SerializeOptions } from "@/stores/utils/cookie";
-import { isTokenExpired, getTokenPayload } from "@/stores/utils/jwt";
+import { getTokenPayload, jwtValid } from "@/stores/utils/jwt";
+import { JWTInvalid } from "jose/errors";
 
-export type AuthModel = { [key: string]: any } | null;
+export type AuthModel = Record<string, unknown> | null;
 
 export type OnStoreChangeFunc = (token: string, model: AuthModel) => void;
 
@@ -12,10 +13,10 @@ const defaultCookieKey = "pb_auth";
  * PocketBase AuthStore implementations.
  */
 export abstract class BaseAuthStore {
-    protected baseToken: string = "";
+    protected baseToken = "";
     protected baseModel: AuthModel = null;
 
-    private _onChangeCallbacks: Array<OnStoreChangeFunc> = [];
+    private _onChangeCallbacks: OnStoreChangeFunc[] = [];
 
     /**
      * Retrieves the stored token (if any).
@@ -35,29 +36,33 @@ export abstract class BaseAuthStore {
      * Loosely checks if the store has valid token (aka. existing and unexpired exp claim).
      */
     get isValid(): boolean {
-        return !isTokenExpired(this.token);
+        return jwtValid(this.token);
     }
 
     /**
      * Checks whether the current store state is for admin authentication.
      */
     get isAdmin(): boolean {
-        return getTokenPayload(this.token).type === "admin";
+        console.log("token", this.token, this.isValid);
+        return this.isValid && getTokenPayload(this.token).type === "admin";
     }
 
     /**
      * Checks whether the current store state is for auth record authentication.
      */
     get isAuthRecord(): boolean {
-        return getTokenPayload(this.token).type === "authRecord";
+        return this.isValid && getTokenPayload(this.token).type === "authRecord";
     }
 
     /**
      * Saves the provided new token and model data in the auth store.
      */
-    save(token: string, model?: AuthModel): void {
-        this.baseToken = token || "";
-        this.baseModel = model || null;
+    save<T extends AuthModel>(token: string, model: T): void {
+        if (!jwtValid(token)) throw new JWTInvalid("Invalid token.");
+        if (!model || typeof model !== "object") throw new Error("Invalid model data.");
+
+        this.baseToken = token;
+        this.baseModel = model;
 
         this.triggerChange();
     }
@@ -98,14 +103,16 @@ export abstract class BaseAuthStore {
     loadFromCookie(cookie: string, key = defaultCookieKey): void {
         const rawData = cookieParse(cookie || "")[key] || "";
 
-        let data: { [key: string]: any } = {};
+        let data: { token?: string; model?: AuthModel | null } = {};
         try {
             data = JSON.parse(rawData);
             // normalize
-            if (typeof data === null || typeof data !== "object" || Array.isArray(data)) {
+            if (typeof data !== "object" || Array.isArray(data)) {
                 data = {};
             }
-        } catch (_) {}
+        } catch (_) {
+            /* ignore */
+        }
 
         this.save(data.token || "", data.model || null);
     }
@@ -186,6 +193,7 @@ export abstract class BaseAuthStore {
         return () => {
             for (let i = this._onChangeCallbacks.length - 1; i >= 0; i--) {
                 if (this._onChangeCallbacks[i] == callback) {
+                    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
                     delete this._onChangeCallbacks[i]; // removes the function reference
                     this._onChangeCallbacks.splice(i, 1); // reindex the array
                     return;

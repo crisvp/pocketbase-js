@@ -53,9 +53,9 @@ export class SettingsService extends BaseService {
         options = Object.assign(
             {
                 method: "POST",
-                body: {
+                body: JSON.stringify({
                     filesystem: filesystem,
-                },
+                }),
             },
             options,
         );
@@ -81,10 +81,10 @@ export class SettingsService extends BaseService {
         options = Object.assign(
             {
                 method: "POST",
-                body: {
+                body: JSON.stringify({
                     email: toEmail,
                     template: emailTemplate,
-                },
+                }),
             },
             options,
         );
@@ -108,13 +108,13 @@ export class SettingsService extends BaseService {
         options = Object.assign(
             {
                 method: "POST",
-                body: {
+                body: JSON.stringify({
                     clientId,
                     teamId,
                     keyId,
                     privateKey,
                     duration,
-                },
+                }),
             },
             options,
         );

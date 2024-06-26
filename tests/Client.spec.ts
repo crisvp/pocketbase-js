@@ -1,21 +1,22 @@
-import { describe, assert, expect, test, beforeAll, afterAll, vi } from "vitest";
+import { describe, assert, expect, test, vi } from "vitest";
 import Client from "@/Client";
 import { LocalAuthStore } from "@/stores/LocalAuthStore";
 import { RecordService } from "@/services/RecordService";
 import { RecordModel } from "@/services/utils/dtos";
 import { serialize } from "object-to-formdata";
-import { it } from "node:test";
+import { afterEach, beforeEach, it } from "node:test";
+import { respond } from "./setup";
+import { http, HttpResponse } from "msw";
+
+const delayedResponse = () =>
+    new Promise<HttpResponse>((resolve) =>
+        setTimeout(() => resolve(HttpResponse.json({})), 1),
+    );
 
 describe("Client", function () {
-    const client = new Client("http://test.host", null, "test_language");
-
-    // beforeAll(function () {
-    //     server.listen({ onUnhandledRequest: "error" });
-    // });
-
-    // afterEach(function () {
-    //     fetchMock.clearMocks();
-    // });
+    let client: Client;
+    beforeEach(() => (client = new Client("http://test.host", null, "test_language")));
+    afterEach(() => client.cancelAllRequests());
 
     describe("constructor()", function () {
         test("Should create a properly configured http client instance", function () {
@@ -59,96 +60,18 @@ describe("Client", function () {
     describe("buildUrl()", function () {
         test("Should properly concatenate path to baseUrl", function () {
             // with trailing slash
-            const client1 = new Client("test_base_url/");
-            assert.equal(client1.buildUrl("test123"), "test_base_url/test123");
-            assert.equal(client1.buildUrl("/test123"), "test_base_url/test123");
+            const client1 = new Client("http://test_base_url/");
+            assert.equal(client1.buildUrl("test123"), "http://test_base_url/test123");
+            assert.equal(client1.buildUrl("/test123"), "http://test_base_url/test123");
 
             // no trailing slash
-            const client2 = new Client("test_base_url");
-            assert.equal(client2.buildUrl("test123"), "test_base_url/test123");
-            assert.equal(client2.buildUrl("/test123"), "test_base_url/test123");
-        });
-
-        test("Should construct an absolute url if window.location is defined", function () {
-            Object.assign(global, {
-                window: {
-                    location: {
-                        origin: "https://example.com/",
-                        pathname: "/sub",
-                    },
-                },
-            });
-
-            // with empty base url
-            {
-                const client = new Client("");
-                assert.equal(
-                    client.buildUrl("test123"),
-                    "https://example.com/sub/test123",
-                );
-                assert.equal(
-                    client.buildUrl("/test123"),
-                    "https://example.com/sub/test123",
-                );
-            }
-
-            // relative base url with starting slash
-            {
-                const client = new Client("/a/b/");
-                assert.equal(
-                    client.buildUrl("test123"),
-                    "https://example.com/a/b/test123",
-                );
-                assert.equal(
-                    client.buildUrl("/test123"),
-                    "https://example.com/a/b/test123",
-                );
-            }
-
-            // relative base url with parent path traversal
-            {
-                const client = new Client("../a/b/");
-                assert.equal(
-                    client.buildUrl("test123"),
-                    "https://example.com/sub/../a/b/test123",
-                );
-                assert.equal(
-                    client.buildUrl("/test123"),
-                    "https://example.com/sub/../a/b/test123",
-                );
-            }
-
-            // relative base url without starting slash
-            {
-                const client = new Client("a/b/");
-                assert.equal(
-                    client.buildUrl("test123"),
-                    "https://example.com/sub/a/b/test123",
-                );
-                assert.equal(
-                    client.buildUrl("/test123"),
-                    "https://example.com/sub/a/b/test123",
-                );
-            }
-
-            // with explicit HTTP absolute base url
-            {
-                const client = new Client("http://example2.com");
-                assert.equal(client.buildUrl("test123"), "http://example2.com/test123");
-                assert.equal(client.buildUrl("/test123"), "http://example2.com/test123");
-            }
-
-            // with explicit HTTPS absolute base url and trailing slash
-            {
-                const client = new Client("https://example2.com/");
-                assert.equal(client.buildUrl("test123"), "https://example2.com/test123");
-                assert.equal(client.buildUrl("/test123"), "https://example2.com/test123");
-            }
+            const client2 = new Client("http://test_base_url");
+            assert.equal(client2.buildUrl("test123"), "http://test_base_url/test123");
+            assert.equal(client2.buildUrl("/test123"), "http://test_base_url/test123");
         });
     });
 
     describe("getFileUrl()", function () {
-        const client = new Client("test_base_url");
         const record: RecordModel = {
             id: "456",
             collectionId: "123",
@@ -172,14 +95,12 @@ describe("Client", function () {
 
     describe("filter()", function () {
         test("filter expression without params", function () {
-            const client = new Client("test_base_url", null, "test_language_A");
             const raw = "a > {:test1} && b = {:test2} || c = {:test2}";
 
             assert.equal(client.filter(raw), raw);
         });
 
         test("filter expression with params that does not match the placeholders", function () {
-            const client = new Client("test_base_url", null, "test_language_A");
             const result = client.filter("a > {:test1} && b = {:test2} || c = {:test2}", {
                 test2: "hello",
             });
@@ -188,8 +109,6 @@ describe("Client", function () {
         });
 
         test("filter expression with all placeholder types", function () {
-            const client = new Client("test_base_url", null, "test_language_A");
-
             const params = {
                 test1: "a'b'c'",
                 test2: null,
@@ -220,8 +139,6 @@ describe("Client", function () {
 
     describe("send()", function () {
         test("Should build and send http request", async function () {
-            const client = new Client("http://test.host/", null, "test_language_A");
-
             const formData = serialize({
                 title: "test",
                 roles: ["a", "b"],
@@ -230,6 +147,18 @@ describe("Client", function () {
             });
             expect(formData).toBeInstanceOf(FormData);
             if (!(formData instanceof FormData)) console.log("fff", formData);
+
+            respond(
+                http.get("*/123", () => HttpResponse.json("successGet")),
+                http.post("*/123", () => HttpResponse.json("successPost")),
+                http.put("*/123", () => HttpResponse.json("successPut")),
+                http.patch("*/123", () => HttpResponse.json("successPatch")),
+                http.delete("*/123", () => HttpResponse.json("successDelete")),
+                http.post("*/multipart", () => HttpResponse.json("successMultipart")),
+                http.post("*/multipartAuto", () =>
+                    HttpResponse.json("successMultipartAuto"),
+                ),
+            );
 
             const testCases = [
                 [client.send("/123", { method: "GET" }), "successGet"],
@@ -259,14 +188,12 @@ describe("Client", function () {
         });
 
         it("should send empty header when no token is set", async () => {
-            const client = new Client("http://test.host", null, "test_language_A");
             expect(client.authStore.isValid).toBe(false);
             const response = await client.send("/unauthenticated", { method: "GET" });
             expect(response).toEqual("successAuth");
         });
 
         it("adds authentication header for admin", async () => {
-            const client = new Client("http://test.host", null, "test_language_A");
             const admin = { id: "test-admin" };
             client.authStore.save("token123", admin);
             const response = await client.send("/admin", { method: "GET" });
@@ -274,7 +201,7 @@ describe("Client", function () {
         });
 
         it("adds authentication header for user", async () => {
-            const client = new Client("http://test.host", null, "test_language_A");
+            respond(http.get("*/user", () => HttpResponse.json("successAuth")));
             const user = { id: "test-user", collectionId: "test-user" };
             client.authStore.save("token123", user);
             const response = await client.send("/user", { method: "GET" });
@@ -296,6 +223,7 @@ describe("Client", function () {
 
         test("Should trigger the before hook", async function () {
             const newUrl = "http://test.host/new";
+            respond(http.get("*/new", () => HttpResponse.json("successNew")));
 
             client.beforeSend = function (_, options) {
                 options.headers = Object.assign({}, options.headers, {
@@ -310,32 +238,32 @@ describe("Client", function () {
         });
 
         test("Should trigger the async before hook", async function () {
-            const client = new Client("http://test.host");
+            vi.useRealTimers();
             const newUrl = "http://test.host/new";
+            respond(http.get("*/new", () => HttpResponse.json("successNew")));
 
-            client.beforeSend = function (_, options) {
-                options.headers = Object.assign({}, options.headers, {
-                    "X-Custom-Header": "456",
-                });
+            const beforeSendSpy = vi.fn(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 10));
+                return { url: newUrl, options: {} };
+            });
 
-                return new Promise((resolve) => {
-                    setTimeout(() => resolve({ url: newUrl, options }), 10);
-                });
-            };
+            client.beforeSend = beforeSendSpy;
 
             const response = await client.send("/old", { method: "GET" });
             expect(response).toEqual("successNew");
+
+            expect(beforeSendSpy).toHaveBeenCalledTimes(1);
         });
 
         test("Should trigger the after hook", async function () {
-            const client = new Client("http://test.host");
+            vi.useRealTimers();
+            respond(http.get("*/success", () => HttpResponse.json("success")));
             const afterSendSpy = vi.fn();
-
             client.afterSend = afterSendSpy;
 
             afterSendSpy.mockReturnValueOnce("success");
-            const responseSuccess = await client.send("/success", { method: "GET" });
-            expect(responseSuccess).toEqual("success");
+            const responseSuccess = client.send("/success", { method: "GET" });
+            expect(await responseSuccess).toEqual("success");
 
             afterSendSpy.mockRejectedValueOnce("failure");
             const responseFailure = client.send("/success", { method: "GET" });
@@ -345,10 +273,9 @@ describe("Client", function () {
         });
 
         test("Should trigger the async after hook", async function () {
-            const client = new Client("http://test.host");
-
             const afterSendSpy = vi.fn();
             client.afterSend = afterSendSpy;
+            respond(http.get("*/success", () => HttpResponse.json("success")));
 
             afterSendSpy.mockResolvedValueOnce("success");
             const response = client.send("/success", { method: "GET" });
@@ -363,8 +290,7 @@ describe("Client", function () {
 
     describe("cancelRequest()", function () {
         test("Should cancel pending request", async function () {
-            const client = new Client("http://test.host");
-
+            respond(http.get("*/slow", delayedResponse));
             const response = client.send("/slow", {
                 method: "GET",
                 params: { $cancelKey: "testKey" },
@@ -378,8 +304,8 @@ describe("Client", function () {
 
     describe("cancelAllRequests()", function () {
         test("Should cancel all pending requests", async function () {
-            const client = new Client("http://test.host");
-
+            respond(http.get("*/slow-1", delayedResponse));
+            respond(http.get("*/slow-2", delayedResponse));
             const requestA = client.send("/slow-1", { method: "GET" });
             const requestB = client.send("/slow-2", { method: "GET" });
 
@@ -389,90 +315,99 @@ describe("Client", function () {
             await expect(requestB).rejects.toThrow();
         });
     });
+});
 
-    describe("auto cancellation", function () {
-        test("Should disable auto cancellation", async function () {
-            const client = new Client("http://test.host");
+describe("auto cancellation", function () {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
 
-            client.autoCancellation(false);
+    afterEach(() => {
+        vi.useRealTimers();
+    });
 
-            const requestA = client.send("/slow-1", { method: "GET" });
-            const requestB = client.send("/slow-1", { method: "GET" });
+    test("Should disable auto cancellation", async function () {
+        const client = new Client("http://test.host");
+        client.autoCancellation(false);
+        respond(http.get("*/slow-1", delayedResponse));
 
-            await expect(requestA).resolves.toBeDefined();
-            await expect(requestB).resolves.toBeDefined();
+        const requestA = client.send("/slow-1", { method: "GET" });
+        const requestB = client.send("/slow-1", { method: "GET" });
+
+        await expect(requestA).resolves.toBeDefined();
+        await expect(requestB).resolves.toBeDefined();
+    });
+
+    test("Should auto cancel duplicated requests with default key", async function () {
+        const client = new Client("http://test.host");
+        respond(http.get("*/slow-1", delayedResponse));
+        const requestA = client.send("/slow-1", { method: "GET" });
+        const requestB = client.send("/slow-1", { method: "GET" });
+        const requestC = client.send("/slow-1", { method: "GET" });
+
+        await expect(requestA).rejects.toThrow();
+        await expect(requestB).rejects.toThrow();
+        await expect(requestC).resolves.toBeDefined();
+    });
+
+    test("Should auto cancel duplicated requests with custom key", async function () {
+        const client = new Client("http://test.host");
+        respond(http.get("*/slow-1", delayedResponse));
+
+        const requestA = client.send("/slow-1", {
+            method: "GET",
+            requestKey: "customKey",
+        });
+        const requestB = client.send("/slow-1", {
+            method: "GET",
+            requestKey: "customKey",
+        });
+        const requestC = client.send("/slow-1", { method: "GET" });
+
+        await expect(requestA).rejects.toThrow();
+        await expect(requestB).resolves.toBeDefined();
+        await expect(requestC).resolves.toBeDefined();
+    });
+
+    test("(legacy) Should skip auto cancellation", async function () {
+        const client = new Client("http://test.host");
+        respond(http.get("*/slow-1", delayedResponse));
+        const requestA = client.send("/slow-1", {
+            method: "GET",
+            params: { $autoCancel: false },
+        });
+        const requestB = client.send("/slow-1", {
+            method: "GET",
+            params: { $autoCancel: false },
+        });
+        const requestC = client.send("/slow-1", {
+            method: "GET",
+            params: { $autoCancel: false },
         });
 
-        test("Should auto cancel duplicated requests with default key", async function () {
-            const client = new Client("http://test.host");
+        await expect(requestA).resolves.toBeDefined();
+        await expect(requestB).resolves.toBeDefined();
+        await expect(requestC).resolves.toBeDefined();
+    });
 
-            const requestA = client.send("/slow-1", { method: "GET" });
-            const requestB = client.send("/slow-1", { method: "GET" });
-            const requestC = client.send("/slow-1", { method: "GET" });
-
-            await expect(requestA).rejects.toThrow();
-            await expect(requestB).rejects.toThrow();
-            await expect(requestC).resolves.toBeDefined();
+    test("Should skip auto cancellation", async function () {
+        const client = new Client("http://test.host");
+        respond(http.get("*/slow-1", delayedResponse));
+        const requestA = client.send("/slow-1", {
+            method: "GET",
+            requestKey: null,
+        });
+        const requestB = client.send("/slow-1", {
+            method: "GET",
+            requestKey: null,
+        });
+        const requestC = client.send("/slow-1", {
+            method: "GET",
+            requestKey: null,
         });
 
-        test("Should auto cancel duplicated requests with custom key", async function () {
-            const client = new Client("http://test.host");
-
-            const requestA = client.send("/slow-1", {
-                method: "GET",
-                requestKey: "customKey",
-            });
-            const requestB = client.send("/slow-1", {
-                method: "GET",
-                requestKey: "customKey",
-            });
-            const requestC = client.send("/slow-1", { method: "GET" });
-
-            await expect(requestA).rejects.toThrow();
-            await expect(requestB).resolves.toBeDefined();
-            await expect(requestC).resolves.toBeDefined();
-        });
-
-        test("(legacy) Should skip auto cancellation", async function () {
-            const client = new Client("http://test.host");
-
-            const requestA = client.send("/slow-1", {
-                method: "GET",
-                params: { $autoCancel: false },
-            });
-            const requestB = client.send("/slow-1", {
-                method: "GET",
-                params: { $autoCancel: false },
-            });
-            const requestC = client.send("/slow-1", {
-                method: "GET",
-                params: { $autoCancel: false },
-            });
-
-            await expect(requestA).resolves.toBeDefined();
-            await expect(requestB).resolves.toBeDefined();
-            await expect(requestC).resolves.toBeDefined();
-        });
-
-        test("Should skip auto cancellation", async function () {
-            const client = new Client("http://test.host");
-
-            const requestA = client.send("/slow-1", {
-                method: "GET",
-                requestKey: null,
-            });
-            const requestB = client.send("/slow-1", {
-                method: "GET",
-                requestKey: null,
-            });
-            const requestC = client.send("/slow-1", {
-                method: "GET",
-                requestKey: null,
-            });
-
-            await expect(requestA).resolves.toBeDefined();
-            await expect(requestB).resolves.toBeDefined();
-            await expect(requestC).resolves.toBeDefined();
-        });
+        await expect(requestA).resolves.toBeDefined();
+        await expect(requestB).resolves.toBeDefined();
+        await expect(requestC).resolves.toBeDefined();
     });
 });

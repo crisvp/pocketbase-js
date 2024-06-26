@@ -1,5 +1,5 @@
 import Client from "@/Client";
-import { getTokenPayload } from "@/stores/utils/jwt";
+import { getTokenPayload, jwtValid } from "@/stores/utils/jwt";
 import { CrudService } from "@/services/utils/CrudService";
 import { RealtimeService, UnsubscribeFunc } from "@/services/RealtimeService";
 import { ClientResponseError } from "@/ClientResponseError";
@@ -563,9 +563,10 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
             }),
         };
 
-        return this.client
-            .send(this.baseCollectionPath + "/confirm-password-reset", options)
-            .then(() => true);
+        return !!(await this.client.send(
+            this.baseCollectionPath + "/confirm-password-reset",
+            options,
+        ));
     }
 
     /**
@@ -610,24 +611,26 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
             }),
         };
 
-        return this.client
-            .send(this.baseCollectionPath + "/confirm-verification", options)
-            .then(() => {
-                // on success manually update the current auth record verified state
-                const payload = getTokenPayload(verificationToken);
-                const model = this.client.authStore.model;
-                if (
-                    model &&
-                    !model.verified &&
-                    model.id === payload.id &&
-                    model.collectionId === payload.collectionId
-                ) {
-                    model.verified = true;
-                    this.client.authStore.save(this.client.authStore.token, model);
-                }
+        if (!jwtValid(verificationToken)) return false;
+        await this.client.send(
+            this.baseCollectionPath + "/confirm-verification",
+            options,
+        );
 
-                return true;
-            });
+        // on success manually update the current auth record verified state
+        const payload = getTokenPayload(verificationToken);
+        const model = this.client.authStore.model;
+        if (
+            model &&
+            !model.verified &&
+            model.id === payload.id &&
+            model.collectionId === payload.collectionId
+        ) {
+            model.verified = true;
+            this.client.authStore.save(this.client.authStore.token, model);
+        }
+
+        return true;
     }
 
     /**
@@ -673,21 +676,21 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
             }),
         };
 
-        return this.client
-            .send(this.baseCollectionPath + "/confirm-email-change", options)
-            .then(() => {
-                const payload = getTokenPayload(emailChangeToken);
-                const model = this.client.authStore.model;
-                if (
-                    model &&
-                    model.id === payload.id &&
-                    model.collectionId === payload.collectionId
-                ) {
-                    this.client.authStore.clear();
-                }
+        const payload = getTokenPayload(emailChangeToken);
+        await this.client.send(
+            this.baseCollectionPath + "/confirm-email-change",
+            options,
+        );
+        const model = this.client.authStore.model;
+        if (
+            model &&
+            model.id === payload.id &&
+            model.collectionId === payload.collectionId
+        ) {
+            this.client.authStore.clear();
+        }
 
-                return true;
-            });
+        return true;
     }
 
     /**

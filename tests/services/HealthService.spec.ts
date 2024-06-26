@@ -4,7 +4,7 @@ import Client from "@/Client";
 import { HealthService } from "@/services/HealthService";
 
 describe("HealthService", function () {
-    const client = new Client("test_base_url");
+    const client = new Client("http://test.host/");
     const service = new HealthService(client);
     const fetchMock = new FetchMock();
 

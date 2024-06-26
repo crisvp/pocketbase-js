@@ -17,7 +17,7 @@ export interface SendOptions extends RequestInit {
     /**
      * The body of the request (serialized automatically for json requests).
      */
-    body?: BodyInit | null;
+    body?: RequestInit["body"];
 
     /**
      * Query parameters that will be appended to the request url.

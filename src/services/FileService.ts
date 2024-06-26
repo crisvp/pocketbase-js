@@ -7,11 +7,8 @@ export class FileService extends BaseService {
      * Builds and returns an absolute record file url for the provided filename.
      */
     getUrl(record: RecordModel, filename: string, queryParams: FileOptions = {}): string {
-        if (
-            !filename ||
-            !record?.id ||
-            !(record?.collectionId || record?.collectionName)
-        ) {
+        if (!filename || !record.id || !(record.collectionId || record.collectionName)) {
+            console.error("Missing required record id or filename.", record);
             return "";
         }
 
@@ -48,15 +45,13 @@ export class FileService extends BaseService {
      * @throws {ClientResponseError}
      */
     async getToken(options?: CommonOptions): Promise<string> {
-        options = Object.assign(
-            {
-                method: "POST",
-            },
-            options,
-        );
+        const hasToken = (data: unknown): data is { token: string } =>
+            typeof data === "object" && data !== null && "token" in data;
 
-        return this.client
-            .send("/api/files/token", options)
-            .then((data) => data?.token || "");
+        options ??= {};
+        options.method = "POST";
+
+        const data = await this.client.send("/api/files/token", options);
+        return hasToken(data) ? data.token : "";
     }
 }

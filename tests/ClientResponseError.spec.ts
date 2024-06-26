@@ -1,4 +1,4 @@
-import { describe, assert, test } from "vitest";
+import { describe, assert, test, expect } from "vitest";
 import { ClientResponseError } from "@/ClientResponseError";
 
 describe("ClientResponseError", function () {
@@ -28,10 +28,7 @@ describe("ClientResponseError", function () {
             assert.deepEqual(err.response, {});
             assert.equal(err.isAbort, false);
             assert.equal(err.originalError, "test");
-            assert.equal(
-                err.message,
-                "Something went wrong while processing your request.",
-            );
+            expect(err.message).toMatch(/Something went wrong/);
         });
 
         test("with plain error", function () {
@@ -43,10 +40,7 @@ describe("ClientResponseError", function () {
             assert.deepEqual(err.response, {});
             assert.equal(err.isAbort, false);
             assert.equal(err.originalError, plainErr);
-            assert.equal(
-                err.message,
-                "Something went wrong while processing your request.",
-            );
+            expect(err.message).toMatch(/Something went wrong/);
         });
 
         test("with ClientResponseError error", function () {

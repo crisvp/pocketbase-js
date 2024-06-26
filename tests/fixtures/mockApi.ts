@@ -227,6 +227,6 @@ const restHandlers = [
 ];
 
 export function setupServer() {
-    // return mswSetupServer();
-    return mswSetupServer(...restHandlers);
+    return mswSetupServer();
+    // return mswSetupServer(...restHandlers);
 }

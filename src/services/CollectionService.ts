@@ -21,18 +21,18 @@ export class CollectionService extends CrudService<CollectionModel> {
         collections: CollectionModel[],
         deleteMissing = false,
         options?: CommonOptions,
-    ): Promise<true> {
+    ): Promise<boolean> {
         options = Object.assign(
             {
                 method: "PUT",
-                body: {
+                body: JSON.stringify({
                     collections: collections,
                     deleteMissing: deleteMissing,
-                },
+                }),
             },
             options,
         );
 
-        return this.client.send(this.baseCrudPath + "/import", options).then(() => true);
+        return !!(await this.client.send(this.baseCrudPath + "/import", options));
     }
 }

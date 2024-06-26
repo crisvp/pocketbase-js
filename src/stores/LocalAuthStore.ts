@@ -63,7 +63,7 @@ export class LocalAuthStore extends BaseAuthStore {
      * Retrieves `key` from the browser's local storage
      * (or runtime/memory if local storage is undefined).
      */
-    private _storageGet(key: string): any {
+    private _storageGet(key: string): unknown {
         if (typeof window !== "undefined" && window?.localStorage) {
             const rawValue = window.localStorage.getItem(key) || "";
             try {

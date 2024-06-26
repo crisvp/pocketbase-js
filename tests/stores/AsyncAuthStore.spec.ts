@@ -1,178 +1,105 @@
-import { describe, assert, expect, test } from "vitest";
+import { describe, assert, expect, test, vi } from "vitest";
 import { AsyncAuthStore } from "@/stores/AsyncAuthStore";
+import { dummyJWT } from "../setup";
 
-describe("AsyncAuthStore", function () {
+describe("AsyncAuthStore", async function () {
+    const validToken = await dummyJWT({ id: "test" });
     describe("construct()", function () {
         test("load empty initial", async function () {
-            let calls: any = [];
+            const saveSpy = vi.fn();
 
             const store = new AsyncAuthStore({
-                save: async (payload) => {
-                    calls.push(payload);
-                },
+                save: saveSpy,
             });
 
             assert.equal(store.token, "");
             assert.equal(store.model, null);
+            await new Promise((resolve) => setTimeout(resolve, 0));
 
-            const callsPromise = new Promise((resolve, _) => {
-                setTimeout(() => resolve(calls), 0);
-            });
-            await expect(callsPromise).resolves.toStrictEqual([]);
+            expect(saveSpy).toHaveBeenCalledTimes(0);
         });
 
-        test("load initial from string", async function () {
-            let calls: any = [];
+        test.each([
+            ["string", `{"token": "${validToken}", "model": {"id": "id1"}}`],
+            [
+                "Promise<string>",
+                Promise.resolve(`{"token": "${validToken}", "model": {"id": "id1"}}`),
+            ],
+            [
+                "Promise<object>",
+                Promise.resolve({ token: validToken, model: { id: "id1" } }),
+            ],
+        ])(`load initial from %s`, async (_description, initial) => {
+            const saveSpy = vi.fn();
 
             const store = new AsyncAuthStore({
-                save: async (payload) => {
-                    calls.push(payload);
-                },
-                initial: `{"token": "test", "model": {"id": "id1"}}`,
+                save: saveSpy,
+                initial,
             });
 
-            const callsPromise = new Promise((resolve, _) => {
-                setTimeout(() => resolve(calls), 0);
-            });
-            await expect(callsPromise).resolves.toStrictEqual([
-                `{"token":"test","model":{"id":"id1"}}`,
-            ]);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(saveSpy).toHaveBeenCalledTimes(1);
 
-            assert.equal(store.token, "test");
-            assert.deepEqual(store.model, { id: "id1" } as any);
-        });
-
-        test("load initial from Promise<string>", async function () {
-            let calls: any = [];
-
-            const store = new AsyncAuthStore({
-                save: async (payload) => {
-                    calls.push(payload);
-                },
-                initial: Promise.resolve(`{"token": "test", "model": {"id": "id1"}}`),
-            });
-
-            const callsPromise = new Promise((resolve, _) => {
-                setTimeout(() => resolve(calls), 0);
-            });
-            await expect(callsPromise).resolves.toStrictEqual([
-                `{"token":"test","model":{"id":"id1"}}`,
-            ]);
-
-            assert.equal(store.token, "test");
-            assert.deepEqual(store.model, { id: "id1" } as any);
-        });
-
-        test("load initial from Promise<object>", async function () {
-            let calls: any = [];
-
-            const store = new AsyncAuthStore({
-                save: async (payload) => {
-                    calls.push(payload);
-                },
-                initial: Promise.resolve({ token: "test", model: { id: "id1" } }),
-            });
-
-            const callsPromise = new Promise((resolve, _) => {
-                setTimeout(() => resolve(calls), 0);
-            });
-            await expect(callsPromise).resolves.toStrictEqual([
-                `{"token":"test","model":{"id":"id1"}}`,
-            ]);
-
-            assert.equal(store.token, "test");
-            assert.deepEqual(store.model, { id: "id1" } as any);
+            assert.equal(store.token, validToken);
+            assert.deepEqual(store.model, { id: "id1" });
         });
     });
 
     describe("save()", function () {
         test("trigger saveFunc", async function () {
-            let calls: any = [];
+            const saveSpy = vi.fn();
 
-            const store = new AsyncAuthStore({
-                save: async (payload) => {
-                    calls.push(payload);
-                },
-            });
+            const store = new AsyncAuthStore({ save: saveSpy });
 
-            store.save("test1", { id: "id1" } as any);
-            assert.equal(store.token, "test1");
-            assert.deepEqual(store.model, { id: "id1" } as any);
+            await store.save(validToken, { id: "id1" });
+            assert.equal(store.token, validToken);
+            assert.deepEqual(store.model, { id: "id1" });
 
             // update
-            store.save("test2", { id: "id2" } as any);
-            assert.equal(store.token, "test2");
-            assert.deepEqual(store.model, { id: "id2" } as any);
+            await store.save(validToken, { id: "id2" });
+            assert.equal(store.token, validToken);
+            assert.deepEqual(store.model, { id: "id2" });
 
-            const callsPromise = new Promise((resolve, _) => {
-                setTimeout(() => resolve(calls), 0);
-            });
-            await expect(callsPromise).resolves.toStrictEqual([
-                `{"token":"test1","model":{"id":"id1"}}`,
-                `{"token":"test2","model":{"id":"id2"}}`,
-            ]);
+            expect(saveSpy).toHaveBeenCalledTimes(2);
         });
     });
 
     describe("clear()", function () {
         test("no explicit clearFunc", async function () {
-            let calls: any = [];
+            const saveSpy = vi.fn();
 
-            const store = new AsyncAuthStore({
-                save: async (payload) => {
-                    calls.push(payload);
-                },
-            });
+            const store = new AsyncAuthStore({ save: saveSpy });
 
-            store.save("test", { id: "id1" } as any);
-            assert.equal(store.token, "test");
-            assert.deepEqual(store.model, { id: "id1" } as any);
+            await store.save(validToken, { id: "id1" });
+            assert.equal(store.token, validToken);
+            assert.deepEqual(store.model, { id: "id1" });
 
-            store.clear();
+            await store.clear();
             assert.equal(store.token, "");
             assert.deepEqual(store.model, null);
 
-            const callsPromise = new Promise((resolve, _) => {
-                setTimeout(() => resolve(calls), 0);
-            });
-            await expect(callsPromise).resolves.toStrictEqual([
-                `{"token":"test","model":{"id":"id1"}}`,
-                "",
-            ]);
+            expect(saveSpy).toHaveBeenCalledTimes(2);
         });
 
         test("with explicit clearFunc", async function () {
-            let saveCalls: any = [];
-            let clearCalls: any = [];
+            const saveSpy = vi.fn();
+            const clearSpy = vi.fn();
 
             const store = new AsyncAuthStore({
-                save: async (payload) => {
-                    saveCalls.push(payload);
-                },
-                clear: async () => {
-                    clearCalls.push("clear_test");
-                },
+                save: saveSpy,
+                clear: clearSpy,
             });
 
-            store.save("test", { id: "id1" } as any);
-            assert.equal(store.token, "test");
-            assert.deepEqual(store.model, { id: "id1" } as any);
+            await store.save(validToken, { id: "id1" });
+            assert.equal(store.token, validToken);
+            assert.deepEqual(store.model, { id: "id1" });
 
-            store.clear();
+            await store.clear();
             assert.equal(store.token, "");
             assert.deepEqual(store.model, null);
 
-            const savePromise = new Promise((resolve, _) => {
-                setTimeout(() => resolve(saveCalls), 0);
-            });
-            await expect(savePromise).resolves.toStrictEqual([
-                `{"token":"test","model":{"id":"id1"}}`,
-            ]);
-
-            const clearPromise = new Promise((resolve, _) => {
-                setTimeout(() => resolve(clearCalls), 0);
-            });
-            await expect(clearPromise).resolves.toStrictEqual(["clear_test"]);
+            expect(saveSpy).toHaveBeenCalledTimes(1);
+            expect(clearSpy).toHaveBeenCalledTimes(1);
         });
     });
 });

@@ -1,10 +1,12 @@
 import { BaseAuthStore, AuthModel } from "@/stores/BaseAuthStore";
 
 export type AsyncSaveFunc = (serializedPayload: string) => Promise<void>;
-
 export type AsyncClearFunc = () => Promise<void>;
 
-type queueFunc = () => Promise<void>;
+export type AsyncInit =
+    | string
+    | Promise<string>
+    | Promise<Record<string, unknown> & { token: string }>;
 
 /**
  * AsyncAuthStore is a helper auth store implementation
@@ -28,7 +30,6 @@ type queueFunc = () => Promise<void>;
 export class AsyncAuthStore extends BaseAuthStore {
     private saveFunc: AsyncSaveFunc;
     private clearFunc?: AsyncClearFunc;
-    private queue: Array<queueFunc> = [];
 
     constructor(config: {
         // The async function that is called every time
@@ -42,92 +43,60 @@ export class AsyncAuthStore extends BaseAuthStore {
         clear?: AsyncClearFunc;
 
         // An *optional* initial data to load into the store.
-        initial?: string | Promise<any>;
+        initial?: AsyncInit;
     }) {
         super();
 
         this.saveFunc = config.save;
         this.clearFunc = config.clear;
-
-        this._enqueue(() => this._loadInitial(config.initial));
+        this.#loadInitial(config.initial);
     }
 
     /**
      * @inheritdoc
      */
-    save(token: string, model?: AuthModel): void {
+    async save(token: string, model?: AuthModel) {
+        if (!model) throw new Error("AsyncAuthStore: model data is required.");
         super.save(token, model);
 
-        let value = "";
         try {
-            value = JSON.stringify({ token, model });
+            const value = JSON.stringify({ token, model });
+            await this.saveFunc(value);
         } catch (err) {
             console.warn("AsyncAuthStore: failed to stringify the new state");
         }
-
-        this._enqueue(() => this.saveFunc(value));
     }
 
     /**
      * @inheritdoc
      */
-    clear(): void {
+    async clear() {
         super.clear();
 
-        if (this.clearFunc) {
-            this._enqueue(() => this.clearFunc!());
-        } else {
-            this._enqueue(() => this.saveFunc(""));
-        }
+        const { clearFunc, saveFunc } = this;
+        if (clearFunc) await clearFunc();
+        else await saveFunc("");
     }
 
     /**
      * Initializes the auth store state.
      */
-    private async _loadInitial(payload?: string | Promise<any>) {
+    async #loadInitial(payload?: string | Promise<unknown>) {
         try {
-            payload = await payload;
+            const resolvedPayload = await payload;
 
-            if (payload) {
+            if (resolvedPayload) {
                 let parsed;
-                if (typeof payload === "string") {
-                    parsed = JSON.parse(payload) || {};
-                } else if (typeof payload === "object") {
-                    parsed = payload;
+                if (typeof resolvedPayload === "string") {
+                    parsed = JSON.parse(resolvedPayload) || {};
+                } else if (typeof resolvedPayload === "object") {
+                    parsed = resolvedPayload;
                 }
 
                 this.save(parsed.token || "", parsed.model || null);
             }
-        } catch (_) {}
-    }
-
-    /**
-     * Appends an async function to the queue.
-     */
-    private _enqueue(asyncCallback: () => Promise<void>) {
-        this.queue.push(asyncCallback);
-
-        if (this.queue.length == 1) {
-            this._dequeue();
+        } catch (e) {
+            console.warn("AsyncAuthStore: failed to load initial state", e);
         }
-    }
-
-    /**
-     * Starts the queue processing.
-     */
-    private _dequeue() {
-        if (!this.queue.length) {
-            return;
-        }
-
-        this.queue[0]().finally(() => {
-            this.queue.shift();
-
-            if (!this.queue.length) {
-                return;
-            }
-
-            this._dequeue();
-        });
     }
 }

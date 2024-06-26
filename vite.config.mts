@@ -39,7 +39,7 @@ export default defineConfig(({ mode }) => {
             },
         },
         test: {
-            environment: "jsdom",
+            environment: "happy-dom",
             setupFiles: ["./tests/setup.ts"],
             typecheck: { tsconfig: "tsconfig.json" },
             testFiles: ["**/*.test.ts"],

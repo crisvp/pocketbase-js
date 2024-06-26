@@ -1,60 +1,30 @@
-import {
-    describe,
-    assert,
-    test,
-    beforeAll,
-    afterAll,
-    beforeEach,
-    afterEach,
-    vi,
-    expect,
-} from "vitest";
-import { FetchMock } from "../mocks";
+import { describe, assert, test, beforeEach, afterEach, vi, expect } from "vitest";
 import Client from "@/Client";
 import { AdminService } from "@/services/AdminService";
 import { AdminModel } from "@/services/utils/dtos";
-import { respond } from "../setup";
+import { dummyJWT, respond } from "../setup";
 import { http, HttpResponse } from "msw";
-
-vi.mock("../mocks");
-
-function dummyJWT(payload = {}) {
-    const buf = Buffer.from(JSON.stringify(payload));
-    return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + buf.toString("base64") + ".test";
-}
+import { getTokenPayload, isTokenExpired } from "@/stores/utils/jwt";
 
 describe("AdminService", function () {
     let client!: Client;
     let service!: AdminService;
 
-    beforeEach(() => void vi.useFakeTimers());
+    beforeEach(() => {
+        vi.useFakeTimers();
+        const date = new Date(2000, 1, 1, 13);
+        vi.setSystemTime(date);
+    });
+
+    beforeEach(() => window.localStorage.clear());
     afterEach(() => void vi.useRealTimers());
+
+    beforeEach(() => void vi.useFakeTimers());
     afterEach(() => void vi.clearAllMocks());
 
-    function initService() {
+    beforeEach(() => {
         client = new Client("http://test.host");
         service = new AdminService(client);
-    }
-
-    initService();
-
-    const fetchMock = new FetchMock();
-
-    beforeEach(function () {
-        initService();
-        service.client.authStore.clear(); // reset
-    });
-
-    beforeAll(function () {
-        fetchMock.init();
-    });
-
-    afterAll(function () {
-        fetchMock.restore();
-    });
-
-    afterEach(function () {
-        fetchMock.clearMocks();
     });
 
     function authResponseCheck(
@@ -72,14 +42,15 @@ describe("AdminService", function () {
     // more tests:
     // ---------------------------------------------------------------
 
-    describe("AuthStore sync", function () {
+    describe("AuthStore sync", async () => {
+        const token = await dummyJWT({ id: "test123" });
         test("Should update the AuthStore admin model on matching update id", async function () {
             respond(
                 http.patch("*/api/admins/test123", () =>
                     HttpResponse.json({ id: "test123", email: "new@example.com" }),
                 ),
             );
-            service.client.authStore.save("test_token", {
+            service.client.authStore.save(token, {
                 id: "test123",
                 email: "old@example.com",
             });
@@ -96,7 +67,7 @@ describe("AdminService", function () {
                 ),
             );
 
-            service.client.authStore.save("test_token", {
+            service.client.authStore.save(token, {
                 id: "test456",
                 email: "old@example.com",
             });
@@ -113,7 +84,7 @@ describe("AdminService", function () {
                 ),
             );
 
-            service.client.authStore.save("test_token", { id: "test123" });
+            service.client.authStore.save(token, { id: "test123" });
 
             await service.delete("test123");
 
@@ -127,7 +98,7 @@ describe("AdminService", function () {
                 ),
             );
 
-            service.client.authStore.save("test_token", { id: "test456" });
+            service.client.authStore.save(token, { id: "test456" });
 
             await service.delete("test123");
 
@@ -137,15 +108,21 @@ describe("AdminService", function () {
 
     describe("authWithPassword()", function () {
         test("Should auth an admin by its email and password", async function () {
+            let inputValidationError;
+            const token = await dummyJWT({ id: "id_authorize" });
             respond(
                 http.post("*/api/admins/auth-with-password", async ({ request }) => {
-                    const body = await request.json();
-                    expect(body).toEqual({
-                        identity: "test@example.com",
-                        password: "123456",
-                    });
+                    try {
+                        const body = await request.json();
+                        expect(body).toEqual({
+                            identity: "test@example.com",
+                            password: "123456",
+                        });
+                    } catch (e) {
+                        inputValidationError = e;
+                    }
                     return HttpResponse.json({
-                        token: "token_authorize",
+                        token,
                         admin: { id: "id_authorize" },
                     });
                 }),
@@ -156,20 +133,18 @@ describe("AdminService", function () {
                 headers: { "x-test": "123" },
             });
 
-            authResponseCheck(
-                result,
-                "token_authorize",
-                service.decode({ id: "id_authorize" }),
-            );
+            if (inputValidationError) throw inputValidationError;
+            authResponseCheck(result, token, service.decode({ id: "id_authorize" }));
         });
     });
 
     describe("authRefresh()", function () {
         test("Should refresh an authorized admin instance", async function () {
+            const token = await dummyJWT({ id: "id_refresh" });
             respond(
                 http.post("*/api/admins/auth-refresh", () =>
                     HttpResponse.json({
-                        token: "token_refresh",
+                        token,
                         admin: { id: "id_refresh" },
                     }),
                 ),
@@ -180,11 +155,7 @@ describe("AdminService", function () {
                 headers: { "x-test": "123" },
             });
 
-            authResponseCheck(
-                result,
-                "token_refresh",
-                service.decode({ id: "id_refresh" }),
-            );
+            authResponseCheck(result, token, service.decode({ id: "id_refresh" }));
         });
     });
 
@@ -206,7 +177,7 @@ describe("AdminService", function () {
     });
 
     describe("confirmPasswordReset()", function () {
-        test("Should confirm a password reset request", async function () {
+        test("Should confirm a password reset request (2)", async function () {
             respond(
                 http.post("*/api/admins/confirm-password-reset", async ({ request }) => {
                     const body = await request.json();
@@ -245,7 +216,7 @@ describe("AdminService", function () {
         const customSpy = vi.fn(() => HttpResponse.json({ status: 200 }));
 
         test("no threshold - should do nothing in addition if the token has expired", async function () {
-            const token = dummyJWT({
+            const token = await dummyJWT({
                 id: "test_id",
                 type: "admin",
                 exp: (new Date(Date.now() - 1 * 60000).getTime() / 1000) << 0,
@@ -271,7 +242,7 @@ describe("AdminService", function () {
         });
 
         test("new auth - should reset the auto refresh handling", async function () {
-            const token = dummyJWT({
+            const token = await dummyJWT({
                 id: "test_id",
                 type: "admin",
                 exp: (new Date(Date.now() - 1 * 60000).getTime() / 1000) << 0,
@@ -311,7 +282,7 @@ describe("AdminService", function () {
         });
 
         test("should do nothing if the token is still valid", async function () {
-            const token = dummyJWT({
+            const token = await dummyJWT({
                 id: "test_id",
                 type: "admin",
                 exp: (new Date(Date.now() + 31 * 60000).getTime() / 1000) << 0,
@@ -337,23 +308,21 @@ describe("AdminService", function () {
         });
 
         test("should call authRefresh if the token is going to expire", async function () {
-            const date = new Date(2020, 1, 1, 13);
-            vi.setSystemTime(date);
+            const token = await dummyJWT(
+                {
+                    id: "test_id",
+                    type: "admin",
+                },
+                { exp: "29m" },
+            );
 
-            const tokenTime = (date.getTime() + 29 * 6000) / 1000;
-            const newTokenTime = (date.getTime() + 31 * 6000) / 1000;
-
-            const token = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: tokenTime,
-            });
-
-            const newToken = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: newTokenTime,
-            });
+            const newToken = await dummyJWT(
+                {
+                    id: "test_id",
+                    type: "admin",
+                },
+                { exp: "31m" },
+            );
 
             const authWithPasswordSpy = makeAuthSpy(token);
             const authRefreshSpy = makeRefreshSpy(newToken);
@@ -370,29 +339,37 @@ describe("AdminService", function () {
             });
 
             expect(service.client.authStore.token).toEqual(token);
+            expect(isTokenExpired(token, 30 * 60)).toBeTruthy();
+
             await service.client.send("/custom", {});
             await service.client.send("/custom", {});
-            expect(service.client.authStore.token).not.toEqual(token);
+            expect(getTokenPayload(service.client.authStore.token)).not.toEqual(
+                getTokenPayload(token),
+            );
             expect(service.client.authStore.token).toEqual(newToken);
 
             expect(authWithPasswordSpy).toHaveBeenCalledTimes(1);
-            expect(authRefreshSpy).toHaveBeenCalledTimes(2);
+            expect(authRefreshSpy).toHaveBeenCalledTimes(1);
             expect(customSpy).toHaveBeenCalledTimes(2);
         });
 
         test("should reauthenticate if the token is going to expire and the auto authRefresh fails", async function () {
-            const date = new Date(2020, 1, 1, 13);
-            vi.setSystemTime(date);
+            vi.setSystemTime(new Date(2020, 1, 1, 13));
 
-            const tokenTime = (date.getTime() + 29 * 6000) / 1000;
-            const newTokenTime = (date.getTime() + 31 * 6000) / 1000;
-
-            const token = dummyJWT({ id: "test_id", type: "admin", exp: tokenTime });
-            const newToken = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: newTokenTime,
-            });
+            const token = await dummyJWT(
+                {
+                    id: "test_id",
+                    type: "admin",
+                },
+                { exp: "29m" },
+            );
+            const newToken = await dummyJWT(
+                {
+                    id: "test_id",
+                    type: "admin",
+                },
+                { exp: "31m" },
+            );
 
             const authWithPasswordSpy = makeAuthSpy(token);
             const authRefreshSpy = makeRefreshSpy(newToken);
@@ -413,21 +390,23 @@ describe("AdminService", function () {
 
             authResponseCheck(authResult, token, service.decode({ id: "test_id" }));
 
-            authRefreshSpy.mockReturnValueOnce(
-                Promise.resolve(HttpResponse.json({ status: 400 })),
-            );
-
-            await service.client.send("/custom", {});
             authRefreshSpy.mockReturnValue(
+                Promise.resolve(HttpResponse.json({ status: 500 })),
+            );
+            authWithPasswordSpy.mockReturnValue(
                 Promise.resolve(
-                    HttpResponse.json({ token: newToken, admin: { id: "test_id" } }),
+                    HttpResponse.json({
+                        token: newToken,
+                        admin: { id: "test_id" },
+                    }),
                 ),
             );
 
             await service.client.send("/custom", {});
+            await service.client.send("/custom", {});
 
-            expect(authWithPasswordSpy).toHaveBeenCalledTimes(1);
-            expect(authRefreshSpy).toHaveBeenCalledTimes(2);
+            expect(authWithPasswordSpy).toHaveBeenCalledTimes(2);
+            expect(authRefreshSpy).toHaveBeenCalledTimes(1);
             expect(customSpy).toHaveBeenCalledTimes(2);
 
             assert.equal(service.client.authStore.token, newToken);
@@ -437,15 +416,27 @@ describe("AdminService", function () {
             const date = new Date(2020, 1, 1, 13);
             vi.setSystemTime(date);
 
-            const tokenTime = (date.getTime() - 1) / 1000;
-            const newTokenTime = (date.getTime() + 31 * 6000) / 1000;
-
-            const token = dummyJWT({ id: "test_id", type: "admin", exp: tokenTime });
-            const newToken = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: newTokenTime,
-            });
+            const token = await dummyJWT(
+                {
+                    id: "test_id",
+                    type: "admin",
+                },
+                { exp: "29m" },
+            );
+            const newToken = await dummyJWT(
+                {
+                    id: "test_id",
+                    type: "admin",
+                },
+                { exp: "31m" },
+            );
+            const expiredToken = await dummyJWT(
+                {
+                    id: "test_id",
+                    type: "admin",
+                },
+                { exp: "1y ago" },
+            );
 
             const authWithPasswordSpy = makeAuthSpy(token);
             const authRefreshSpy = makeRefreshSpy(newToken);
@@ -456,6 +447,7 @@ describe("AdminService", function () {
                 http.get("*/custom", customSpy),
             );
 
+            // This is called to register the auth refresh handler
             const authResult = await service.authWithPassword(
                 "test@example.com",
                 "123456",
@@ -466,19 +458,26 @@ describe("AdminService", function () {
             );
 
             authResponseCheck(authResult, token, service.decode({ id: "test_id" }));
-            expect(service.client.authStore.token).toEqual(token);
-            expect(service.client.authStore.isValid).toBeFalsy();
 
             authWithPasswordSpy.mockReturnValueOnce(
                 Promise.resolve(
                     HttpResponse.json({ token: newToken, admin: { id: "test_id" } }),
                 ),
             );
-            await service.client.send("/custom", {});
-            await service.client.send("/custom", {});
-            expect(service.client.authStore.token).toEqual(newToken);
 
+            // Forcibly set the expired token (would normally throw)
+            const tokenGetter = vi.spyOn(service.client.authStore, "token", "get");
+            tokenGetter.mockReturnValue(expiredToken);
+
+            // This will re-auth
+            await service.client.send("/custom", {});
+            tokenGetter.mockRestore();
+            expect(service.client.authStore.token).toEqual(newToken);
+            await service.client.send("/custom", {});
+
+            // 1 for the initial auth, 1 for the re-auth
             expect(authWithPasswordSpy).toHaveBeenCalledTimes(2);
+            // not called, because the token expired more than 30 minutes ago
             expect(authRefreshSpy).toHaveBeenCalledTimes(0);
             expect(customSpy).toHaveBeenCalledTimes(2);
         });

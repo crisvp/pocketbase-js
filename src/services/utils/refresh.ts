@@ -49,6 +49,8 @@ export function registerAutoRefresh(
         if (
             // is loosely valid
             isValid &&
+            // is not yet expired
+            !isTokenExpired(client.authStore.token) &&
             // but it is going to expire in the next "threshold" seconds
             isTokenExpired(client.authStore.token, threshold)
         ) {
@@ -62,6 +64,7 @@ export function registerAutoRefresh(
 
         // still invalid -> reauthenticate
         if (!isValid) {
+            console.log("reauthenticateFunc");
             await reauthenticateFunc();
         }
 

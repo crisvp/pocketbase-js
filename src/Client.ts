@@ -269,34 +269,7 @@ export class Client {
      * Builds a full client url by safely concatenating the provided path.
      */
     buildUrl(path: string): string {
-        let url = this.baseUrl;
-
-        // construct an absolute base url if in a browser environment
-        if (
-            typeof window !== "undefined" &&
-            !!window.location &&
-            !url.startsWith("https://") &&
-            !url.startsWith("http://")
-        ) {
-            url = window.location.origin?.endsWith("/")
-                ? window.location.origin.substring(0, window.location.origin.length - 1)
-                : window.location.origin || "";
-
-            if (!this.baseUrl.startsWith("/")) {
-                url += window.location.pathname || "/";
-                url += url.endsWith("/") ? "" : "/";
-            }
-
-            url += this.baseUrl;
-        }
-
-        // concatenate the path
-        if (path) {
-            url += url.endsWith("/") ? "" : "/"; // append trailing slash if missing
-            url += path.startsWith("/") ? path.substring(1) : path;
-        }
-
-        return url;
+        return new URL(path, this.baseUrl).toString();
     }
 
     /**
@@ -311,14 +284,9 @@ export class Client {
         let url = this.buildUrl(path);
 
         if (this.beforeSend) {
-            const result = Object.assign({}, await this.beforeSend(url, options));
-            if (
-                typeof result.url !== "undefined" ||
-                typeof result.options !== "undefined"
-            ) {
-                url = result.url || url;
-                options = result.options || options;
-            }
+            const result = await this.beforeSend(url, options);
+            url = result.url ?? url;
+            options = result.options ?? options;
         }
 
         // serialize the query parameters
@@ -357,9 +325,6 @@ export class Client {
      */
     private initSendOptions(path: string, options: SendOptions): SendOptions {
         options = Object.assign({ method: "GET" } as SendOptions, options);
-
-        // auto convert the body to FormData, if needed
-        if (options.body) options.body = this.convertToFormDataIfNeeded(options.body);
 
         // move unknown send options as query parameters
         normalizeUnknownQueryParams(options);
