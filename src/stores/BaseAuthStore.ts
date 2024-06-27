@@ -2,11 +2,15 @@ import { cookieParse, cookieSerialize, SerializeOptions } from '@/stores/utils/c
 import { getTokenPayload, jwtValid } from '@/stores/utils/jwt';
 import { JWTInvalid } from 'jose/errors';
 
-export type AuthModel = Record<string, unknown> | null;
+export type AuthModel = (Record<string, unknown> & { id: string; collectionId: string }) | null;
 
 export type OnStoreChangeFunc = (token: string, model: AuthModel) => void;
 
 const defaultCookieKey = 'pb_auth';
+
+export function isAuthModel(value: unknown): value is AuthModel {
+  return value === null || (typeof value === 'object' && typeof (value as AuthModel)?.id === 'string');
+}
 
 /**
  * Base AuthStore class that is intended to be extended by all other
@@ -110,11 +114,11 @@ export abstract class BaseAuthStore {
       if (typeof data !== 'object' || Array.isArray(data)) {
         data = {};
       }
+      this.save(data.token || '', data.model || null);
     } catch (_) {
-      /* ignore */
+      // Default to unauthenticated state
+      this.clear();
     }
-
-    this.save(data.token || '', data.model || null);
   }
 
   /**

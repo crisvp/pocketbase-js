@@ -1,4 +1,4 @@
-import { describe, assert, test, expect, beforeEach } from 'vitest';
+import { describe, assert, test, expect } from 'vitest';
 import Client from '@/Client';
 import { FileService } from '@/services/FileService';
 import { respond } from '../setup';

@@ -238,14 +238,23 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
   /**
    * Prepare successful collection authorization response.
    */
-  protected authResponse<T extends Record<string, unknown> = M>(responseData: AuthModel): RecordAuthResponse<T> {
-    const record = this.decode(responseData?.record || {});
+  protected authResponse(responseData: AuthModel): RecordAuthResponse<AuthModel> {
+    if (!responseData) throw new ClientResponseError(new Error('Invalid auth response.'));
+    if (!('token' in responseData && typeof responseData.token === 'string'))
+      throw new Error('Could not decode token from response data');
 
-    this.client.authStore.save(responseData?.token, record);
+    // @todo - improve this; AuthModel is basically not defined.
+    const isAuthRecord = (record: unknown): record is AuthModel =>
+      !!(record && typeof record === 'object' && 'id' in record);
+
+    if (!isAuthRecord(responseData.record))
+      throw new Error(`Could not decode record from response data: ${JSON.stringify(responseData.record)}`);
+
+    const record = this.decode(responseData.record);
+    this.client.authStore.save(responseData.token, record);
 
     return Object.assign({}, responseData, {
-      // normalize common fields
-      token: responseData?.token || '',
+      token: responseData.token ?? '',
       record: record,
     });
   }
@@ -285,11 +294,11 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
    *
    * @throws {ClientResponseError}
    */
-  async authWithPassword<T extends Record<string, unknown> = M>(
+  async authWithPassword(
     usernameOrEmail: string,
     password: string,
     options: RecordOptions = {}
-  ): Promise<RecordAuthResponse<T>> {
+  ): Promise<RecordAuthResponse<AuthModel>> {
     options = {
       ...options,
       method: 'POST',
@@ -299,9 +308,8 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
       }),
     };
 
-    return this.client
-      .send<AuthModel>(this.baseCollectionPath + '/auth-with-password', options)
-      .then(data => this.authResponse<T>(data));
+    const data = await this.client.send<AuthModel>(this.baseCollectionPath + '/auth-with-password', options);
+    return this.authResponse(data);
   }
 
   /**
@@ -317,14 +325,14 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
    *
    * @throws {ClientResponseError}
    */
-  async authWithOAuth2Code<T extends Record<string, unknown> = M>(
+  async authWithOAuth2Code(
     provider: string,
     code: string,
     codeVerifier: string,
     redirectUrl: string,
     createData?: Record<string, unknown>,
     options: RecordOptions = {}
-  ): Promise<RecordAuthResponse<T>> {
+  ): Promise<RecordAuthResponse<AuthModel>> {
     options = {
       ...options,
       method: 'POST',
@@ -337,9 +345,9 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
       }),
     };
 
-    return this.client
-      .send<AuthModel>(this.baseCollectionPath + '/auth-with-oauth2', options)
-      .then(data => this.authResponse<T>(data));
+    const data = await this.client.send<AuthModel>(this.baseCollectionPath + '/auth-with-oauth2', options);
+    // const data = await this.client.send<AuthModel>(this.baseCollectionPath + '/auth-with-oauth2-code', options);
+    return this.authResponse(data);
   }
 
   /**
@@ -375,15 +383,11 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
    *
    * @throws {ClientResponseError}
    */
-  async authWithOAuth2<T extends Record<string, unknown> = M>(
-    config: OAuth2AuthConfig
-  ): Promise<RecordAuthResponse<T>> {
+  async authWithOAuth2(config: OAuth2AuthConfig): Promise<RecordAuthResponse<AuthModel>> {
     const authMethods = await this.listAuthMethods();
 
     const provider = authMethods.authProviders.find(p => p.name === config.provider);
-    if (!provider) {
-      throw new ClientResponseError(new Error(`Missing or invalid provider "${config.provider}".`));
-    }
+    if (!provider) throw new ClientResponseError(new Error(`Missing or invalid provider "${config.provider}".`));
 
     const redirectUrl = this.client.buildUrl('/api/oauth2-redirect');
 
@@ -395,33 +399,30 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
     // note: it is opened before the async call due to Safari restrictions
     // (see https://github.com/pocketbase/pocketbase/discussions/2429#discussioncomment-5943061)
     let eagerDefaultPopup: Window | null = null;
-    if (!config.urlCallback) {
-      eagerDefaultPopup = openBrowserPopup(undefined);
-    }
+    if (!config.urlCallback) eagerDefaultPopup = openBrowserPopup(undefined);
 
     function cleanup() {
       eagerDefaultPopup?.close();
       realtime.unsubscribe();
     }
 
-    return new Promise((resolve, reject) => {
-      try {
-        realtime.subscribe('@oauth2', async e => {
+    const subscribe = new Promise<RecordAuthResponse<AuthModel>>((resolve, reject) => {
+      realtime
+        .subscribe('@oauth2', async e => {
+          console.log('inside sub handler');
           const oldState = realtime.clientId;
 
           try {
-            if (!e.state || oldState !== e.state) {
-              throw new Error("State parameters don't match.");
-            }
-
-            if (e.error || !e.code) {
-              throw new Error('OAuth2 redirect error or missing code: ' + e.error);
-            }
+            console.log('checking');
+            if (!e.state || oldState !== e.state) throw new Error("State parameters don't match.");
+            if (e.error || !e.code) throw new Error('OAuth2 redirect error or missing code: ' + e.error);
+            console.log('checking done');
 
             // clear the non SendOptions props
             const options = Object.assign({}, config);
 
-            const authData = await this.authWithOAuth2Code<T>(
+            console.log('authing');
+            const authData = await this.authWithOAuth2Code(
               provider.name,
               e.code,
               provider.codeVerifier,
@@ -432,49 +433,56 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
                 requestKey: options.requestKey,
               }
             );
+            console.log('authing done');
 
+            console.log('subscription done');
             resolve(authData);
           } catch (err) {
+            console.log('subscription fail', err);
             reject(new ClientResponseError(err));
+            cleanup();
           }
-
+        })
+        .catch(e => {
+          console.log('subscription error', JSON.stringify(e.originalError));
+          reject(new ClientResponseError(e));
           cleanup();
         });
-
-        const replacements: Record<string, string> = {
-          state: realtime.clientId,
-        };
-        if (config.scopes?.length) {
-          replacements['scope'] = config.scopes.join(' ');
-        }
-
-        const url = this._replaceQueryParams(provider.authUrl + redirectUrl, replacements);
-
-        const urlCallback =
-          config.urlCallback ||
-          function (url: string) {
-            if (eagerDefaultPopup) {
-              eagerDefaultPopup.location.href = url;
-            } else {
-              // it could have been blocked due to its empty initial url,
-              // try again...
-              eagerDefaultPopup = openBrowserPopup(url);
-            }
-          };
-
-        (async () => {
-          try {
-            urlCallback(url);
-          } catch (err) {
-            cleanup();
-            reject(new ClientResponseError(err));
-          }
-        })();
-      } catch (err) {
-        cleanup();
-        reject(new ClientResponseError(err));
-      }
     });
+
+    await realtime.connect();
+    if (!realtime.clientId) throw new Error('Realtime service not initialized.');
+    const replacements: Record<string, string> = {
+      state: realtime.clientId,
+    };
+    if (config.scopes?.length) {
+      replacements['scope'] = config.scopes.join(' ');
+    }
+
+    const url = this._replaceQueryParams(provider.authUrl + redirectUrl, replacements);
+    console.log('url', url);
+
+    const urlCallback =
+      config.urlCallback ||
+      function (url: string) {
+        if (eagerDefaultPopup) {
+          eagerDefaultPopup.location.href = url;
+        } else {
+          // it could have been blocked due to its empty initial url,
+          // try again...
+          eagerDefaultPopup = openBrowserPopup(url);
+        }
+      };
+
+    try {
+      console.log('urlCallback');
+      await urlCallback(url);
+      console.log('urlCallback done - starting subscribe');
+      return await subscribe;
+    } catch (err) {
+      cleanup();
+      throw new ClientResponseError(err);
+    }
   }
 
   /**
@@ -485,12 +493,10 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
    *
    * @throws {ClientResponseError}
    */
-  async authRefresh<T extends Record<string, unknown> = M>(
-    options: RecordOptions = {}
-  ): Promise<RecordAuthResponse<T>> {
+  async authRefresh(options: RecordOptions = {}): Promise<RecordAuthResponse<AuthModel>> {
     return this.client
       .send<AuthModel>(this.baseCollectionPath + '/auth-refresh', options)
-      .then(data => this.authResponse<T>(data));
+      .then(data => this.authResponse(data));
   }
 
   /**

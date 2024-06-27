@@ -1,5 +1,5 @@
 import { setupServer } from './fixtures/mockApi';
-import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll } from 'vitest';
 import { RequestHandler } from 'msw';
 
 import { SignJWT } from 'jose';

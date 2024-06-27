@@ -2,6 +2,7 @@ import { CrudService } from '@/services/utils/CrudService';
 import { AdminModel } from '@/services/utils/dtos';
 import { AuthOptions, CommonOptions, SendOptions } from '@/services/utils/options';
 import { registerAutoRefresh, resetAutoRefresh } from '@/services/utils/refresh';
+import { isAuthModel } from '@/stores/BaseAuthStore';
 
 export interface AdminAuthResponse {
   [key: string]: unknown;
@@ -71,17 +72,16 @@ export class AdminService extends CrudService<AdminModel> {
    * Prepare successful authorize response.
    */
   protected authResponse(responseData: Partial<AdminAuthResponse>): AdminAuthResponse {
-    const admin = this.decode(responseData?.admin || {});
+    if (!isAuthModel(responseData.admin) || !responseData.admin) throw new Error('Invalid admin data.');
+    if (!responseData.token) throw new Error('Invalid token data.');
 
-    if (responseData?.token && responseData?.admin) {
-      this.client.authStore.save(responseData.token, admin);
-    }
+    const admin = this.decode(responseData.admin);
+    this.client.authStore.save(responseData.token, admin);
 
-    return Object.assign({}, responseData, {
-      // normalize common fields
-      token: responseData?.token || '',
+    return {
+      token: responseData.token,
       admin: admin,
-    });
+    };
   }
 
   /**

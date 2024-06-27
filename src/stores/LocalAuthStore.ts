@@ -1,11 +1,20 @@
 import { BaseAuthStore, AuthModel } from '@/stores/BaseAuthStore';
 
+export interface AuthData {
+  token: string;
+  model: AuthModel;
+}
+
+function isAuthData(value: unknown): value is AuthData {
+  return typeof value === 'object' && typeof (value as AuthData).token === 'string';
+}
+
 /**
  * The default token store for browsers with auto fallback
  * to runtime/memory if local storage is undefined (eg. in node env).
  */
 export class LocalAuthStore extends BaseAuthStore {
-  private storageFallback: { [key: string]: any } = {};
+  private storageFallback: Record<string, unknown> = {};
   private storageKey: string;
 
   constructor(storageKey = 'pocketbase_auth') {
@@ -20,24 +29,26 @@ export class LocalAuthStore extends BaseAuthStore {
    * @inheritdoc
    */
   get token(): string {
-    const data = this._storageGet(this.storageKey) || {};
+    const data = this._storageGet<AuthData>(this.storageKey);
+    if (!isAuthData(data)) return '';
 
-    return data.token || '';
+    return data.token;
   }
 
   /**
    * @inheritdoc
    */
   get model(): AuthModel {
-    const data = this._storageGet(this.storageKey) || {};
+    const data = this._storageGet<AuthModel>(this.storageKey);
+    if (!isAuthData(data)) return null;
 
-    return data.model || null;
+    return data.model;
   }
 
   /**
    * @inheritdoc
    */
-  save(token: string, model?: AuthModel) {
+  save(token: string, model: AuthModel) {
     this._storageSet(this.storageKey, {
       token: token,
       model: model,
@@ -63,7 +74,7 @@ export class LocalAuthStore extends BaseAuthStore {
    * Retrieves `key` from the browser's local storage
    * (or runtime/memory if local storage is undefined).
    */
-  private _storageGet(key: string): unknown {
+  private _storageGet<T>(key: string): T | string {
     if (typeof window !== 'undefined' && window?.localStorage) {
       const rawValue = window.localStorage.getItem(key) || '';
       try {
@@ -75,21 +86,18 @@ export class LocalAuthStore extends BaseAuthStore {
     }
 
     // fallback
-    return this.storageFallback[key];
+    return this.storageFallback[key] as T;
   }
 
   /**
    * Stores a new data in the browser's local storage
    * (or runtime/memory if local storage is undefined).
    */
-  private _storageSet(key: string, value: any) {
+  private _storageSet(key: string, value: unknown) {
     if (typeof window !== 'undefined' && window?.localStorage) {
       // store in local storage
-      let normalizedVal = value;
-      if (typeof value !== 'string') {
-        normalizedVal = JSON.stringify(value);
-      }
-      window.localStorage.setItem(key, normalizedVal);
+      const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
+      window.localStorage.setItem(key, serializedValue);
     } else {
       // store in fallback
       this.storageFallback[key] = value;
@@ -106,7 +114,7 @@ export class LocalAuthStore extends BaseAuthStore {
     }
 
     // delete from fallback
-    delete this.storageFallback[key];
+    this.storageFallback[key] = undefined;
   }
 
   /**
@@ -122,9 +130,9 @@ export class LocalAuthStore extends BaseAuthStore {
         return;
       }
 
-      const data = this._storageGet(this.storageKey) || {};
-
-      super.save(data.token || '', data.model || null);
+      const data = this._storageGet<AuthData>(this.storageKey);
+      if (!isAuthData(data)) super.clear();
+      else super.save(data.token, data.model);
     });
   }
 }

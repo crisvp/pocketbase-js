@@ -13,6 +13,10 @@
       "import": "./dist/pocketbase-js.mjs",
       "require": "./dist/pocketbase-js.js",
       "types": "./dist/pocketbase-js.d.ts"
+    },
+    "./src": {
+      "require": "./build/index.js",
+      "types": "./dist/pocketbase-js.d.ts"
     }
   },
   "module": "./dist/pocketbase-js.mjs",
@@ -28,7 +32,8 @@
     "build": "vite build",
     "coverage": "vitest run --coverage",
     "compile": "tsc -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint ."
   },
   "browserslist": [
     "defaults and fully supports es6-module",

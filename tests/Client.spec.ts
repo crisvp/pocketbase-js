@@ -183,7 +183,7 @@ describe('Client', function () {
     });
 
     it('adds authentication header for admin', async () => {
-      const admin = { id: 'test-admin' };
+      const admin = { id: 'test-admin', collectionId: 'test-admin' };
       client.authStore.save('token123', admin);
       const response = await client.send('/admin', { method: 'GET' });
       expect(response).toEqual('successAuth');

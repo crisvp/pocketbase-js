@@ -52,9 +52,7 @@ export class RealtimeService extends BaseService {
     callback: (data: T & SubscriptionData) => void,
     options?: SendOptions
   ): Promise<UnsubscribeFunc> {
-    if (!topic) {
-      throw new Error('topic must be set.');
-    }
+    if (!topic) throw new Error('topic must be set.');
 
     let key = topic;
 
@@ -76,6 +74,7 @@ export class RealtimeService extends BaseService {
       let data: T & SubscriptionData;
       try {
         data = JSON.parse(e.data ?? '{}');
+        console.log('calling aclalbal');
         callback(data);
       } catch {
         /* ignore */
@@ -83,17 +82,16 @@ export class RealtimeService extends BaseService {
     };
 
     // store the listener
-    if (!this.subscriptions[key]) {
-      this.subscriptions[key] = [];
-    }
+    this.subscriptions[key] ??= [];
     this.subscriptions[key].push(listener);
 
-    if (!this.isConnected) {
-      // initialize sse connection
-      await this.connect();
-    } else if (this.subscriptions[key].length === 1) {
+    if (!this.isConnected) await this.connect();
+    console.log('connected');
+
+    if (this.subscriptions[key].length === 1) {
       // send the updated subscriptions (if it is the first for the key)
       await this.submitSubscriptions();
+      console.log('submitted');
     } else {
       // only register the listener
       this.eventSource?.addEventListener(key, listener);
@@ -269,21 +267,20 @@ export class RealtimeService extends BaseService {
 
     this.lastSentSubscriptions = this.getNonEmptySubscriptionKeys();
 
-    return this.client
-      .send('/api/realtime', {
+    try {
+      console.log('submitting', this.lastSentSubscriptions, this.clientId);
+      return await this.client.send('/api/realtime', {
         method: 'POST',
         body: JSON.stringify({
           clientId: this.clientId,
           subscriptions: this.lastSentSubscriptions,
         }),
         requestKey: this.getSubscriptionsCancelKey(),
-      })
-      .catch(err => {
-        if (err?.isAbort) {
-          return; // silently ignore aborted pending requests
-        }
-        throw err;
       });
+    } catch (err) {
+      if (err instanceof ClientResponseError && err.isAbort) return; // silently ignore aborted pending requests
+      throw err;
+    }
   }
 
   private getSubscriptionsCancelKey(): string {
@@ -343,7 +340,7 @@ export class RealtimeService extends BaseService {
     }
   }
 
-  private async connect(): Promise<void> {
+  async connect(): Promise<void> {
     if (this.reconnectAttempts > 0) {
       // immediately resolve the promise to avoid indefinitely
       // blocking the client during reconnection
@@ -371,52 +368,50 @@ export class RealtimeService extends BaseService {
       this.connectErrorHandler(new Error('EventSource connect took too long.'));
     }, this.maxConnectTimeout);
 
-    this.eventSource = new EventSource(this.client.buildUrl('/api/realtime'));
+    // @todo - uh, shouldn't this need credentials?
+    console.log('connecting to', this.client.buildUrl('/api/realtime'));
+    this.eventSource = new EventSource(this.client.buildUrl('/api/realtime') /* { withCredentials: true } */);
+    console.log('connected to', this.client.buildUrl('/api/realtime'));
 
     this.eventSource.onerror = () => {
       this.connectErrorHandler(new Error('Failed to establish realtime connection.'));
     };
 
-    this.eventSource.addEventListener('PB_CONNECT', e => {
+    this.eventSource.addEventListener('PB_CONNECT', async e => {
       const msgEvent = e as MessageEvent;
       this.clientId = msgEvent?.lastEventId;
 
-      this.submitSubscriptions()
-        .then(async () => {
-          let retries = 3;
-          while (this.hasUnsentSubscriptions() && retries > 0) {
-            retries--;
-            // resubscribe to ensure that the latest topics are submitted
-            //
-            // This is needed because missed topics could happen on reconnect
-            // if after the pending sent `submitSubscriptions()` call another `subscribe()`
-            // was made before the submit was able to complete.
-            await this.submitSubscriptions();
-          }
-        })
-        .then(() => {
-          for (const p of this.pendingConnects) {
-            p.resolve();
-          }
+      try {
+        await this.submitSubscriptions();
+        let retries = 3;
+        while (this.hasUnsentSubscriptions() && retries > 0) {
+          retries--;
+          // resubscribe to ensure that the latest topics are submitted
+          //
+          // This is needed because missed topics could happen on reconnect
+          // if after the pending sent `submitSubscriptions()` call another `subscribe()`
+          // was made before the submit was able to complete.
+          await this.submitSubscriptions();
+        }
+        for (const p of this.pendingConnects) p.resolve();
 
-          // reset connect meta
-          this.pendingConnects = [];
-          this.reconnectAttempts = 0;
-          clearTimeout(this.reconnectTimeoutId);
-          clearTimeout(this.connectTimeoutId);
+        // reset connect meta
+        this.pendingConnects = [];
+        this.reconnectAttempts = 0;
+        clearTimeout(this.reconnectTimeoutId);
+        clearTimeout(this.connectTimeoutId);
 
-          // propagate the PB_CONNECT event
-          const connectSubs = this.getSubscriptionsByTopic('PB_CONNECT');
-          for (const key in connectSubs) {
-            for (const listener of connectSubs[key]) {
-              listener(e);
-            }
+        // propagate the PB_CONNECT event
+        const connectSubs = this.getSubscriptionsByTopic('PB_CONNECT');
+        for (const key in connectSubs) {
+          for (const listener of connectSubs[key]) {
+            listener(e);
           }
-        })
-        .catch(err => {
-          this.clientId = '';
-          this.connectErrorHandler(err);
-        });
+        }
+      } catch (err) {
+        this.clientId = '';
+        this.connectErrorHandler(err);
+      }
     });
   }
 

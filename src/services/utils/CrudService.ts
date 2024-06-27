@@ -174,7 +174,7 @@ export abstract class CrudService<M extends RecordModel> extends BaseService {
     options = Object.assign(
       {
         method: 'PATCH',
-        body: bodyParams,
+        body: JSON.stringify(bodyParams),
       },
       options
     );

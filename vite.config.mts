@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
       build: { target: browserslistToEsbuild() },
+      sourcemap: true,
       lib: {
         entry: 'src/index.ts',
         name: 'Pocketbase',

@@ -12,6 +12,7 @@
  * field-vchar   = VCHAR / obs-text
  * obs-text      = %x80-FF
  */
+// eslint-disable-next-line no-control-regex
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
 
 export interface ParseOptions {
@@ -22,8 +23,8 @@ export interface ParseOptions {
  * Parses the given cookie header string into an object
  * The object has the various cookies as keys(names) => values
  */
-export function cookieParse(str: string, options?: ParseOptions): { [key: string]: any } {
-  const result: { [key: string]: any } = {};
+export function cookieParse(str: string, options?: ParseOptions): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
 
   if (typeof str !== 'string') {
     return result;
@@ -215,6 +216,6 @@ function defaultEncode(val: string | number | boolean): string {
 /**
  * Determines if value is a Date.
  */
-function isDate(val: any): boolean {
+function isDate(val: unknown): val is Date {
   return Object.prototype.toString.call(val) === '[object Date]' || val instanceof Date;
 }
