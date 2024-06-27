@@ -31,9 +31,9 @@
   "scripts": {
     "build": "vite build",
     "coverage": "vitest run --coverage",
-    "compile": "tsc -p .",
+    "compile": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "pnpm compile ; eslint ."
   },
   "browserslist": [
     "defaults and fully supports es6-module",
