@@ -441,7 +441,8 @@ export class RealtimeService extends BaseService {
       this.reconnectAttempts > this.maxReconnectAttempts
     ) {
       for (const p of this.pendingConnects) {
-        p.reject(new ClientResponseError(err));
+        if (typeof err === 'object' && err) p.reject(new ClientResponseError({ ...err }));
+        else p.reject(new ClientResponseError());
       }
       this.pendingConnects = [];
       this.disconnect();

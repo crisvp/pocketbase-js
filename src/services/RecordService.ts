@@ -239,7 +239,7 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
    * Prepare successful collection authorization response.
    */
   protected authResponse(responseData: AuthModel): RecordAuthResponse<AuthModel> {
-    if (!responseData) throw new ClientResponseError(new Error('Invalid auth response.'));
+    if (!responseData) throw new ClientResponseError({ ...new Error('Invalid auth response.') });
     if (!('token' in responseData && typeof responseData.token === 'string'))
       throw new Error('Could not decode token from response data');
 
@@ -387,7 +387,7 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
     const authMethods = await this.listAuthMethods();
 
     const provider = authMethods.authProviders.find(p => p.name === config.provider);
-    if (!provider) throw new ClientResponseError(new Error(`Missing or invalid provider "${config.provider}".`));
+    if (!provider) throw new ClientResponseError({ ...new Error(`Missing or invalid provider "${config.provider}".`) });
 
     const redirectUrl = this.client.buildUrl('/api/oauth2-redirect');
 
@@ -439,7 +439,8 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
             resolve(authData);
           } catch (err) {
             console.log('subscription fail', err);
-            reject(new ClientResponseError(err));
+            if (typeof err === 'object' && err) reject(new ClientResponseError({ ...err }));
+            else reject(new ClientResponseError({ ...new Error('OAuth2 redirect error: ' + err) }));
             cleanup();
           }
         })
@@ -481,7 +482,8 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
       return await subscribe;
     } catch (err) {
       cleanup();
-      throw new ClientResponseError(err);
+      if (typeof err === 'object' && err) throw new ClientResponseError({ ...err });
+      else throw new ClientResponseError({ ...new Error('OAuth2 redirect error: ' + err) });
     }
   }
 
@@ -721,7 +723,9 @@ export class RecordService<M extends RecordModel = RecordModel> extends CrudServ
 
 function openBrowserPopup(url?: string): Window | null {
   if (typeof window === 'undefined' || !window?.open) {
-    throw new ClientResponseError(new Error(`Not in a browser context - please pass a custom urlCallback function.`));
+    throw new ClientResponseError({
+      ...new Error(`Not in a browser context - please pass a custom urlCallback function.`),
+    });
   }
 
   let width = 1024;

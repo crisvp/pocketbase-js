@@ -23,12 +23,12 @@ export interface ParseOptions {
  * Parses the given cookie header string into an object
  * The object has the various cookies as keys(names) => values
  */
-export function cookieParse(str: string, options?: ParseOptions): Record<string, unknown> {
+export function cookieParse<T extends Record<string, unknown> = Record<string, unknown>>(
+  str: string,
+  options?: ParseOptions
+): T {
   const result: Record<string, unknown> = {};
-
-  if (typeof str !== 'string') {
-    return result;
-  }
+  if (typeof str !== 'string') return result as T;
 
   const opt = Object.assign({}, options || {});
   const decode = opt.decode || defaultDecode;
@@ -73,7 +73,7 @@ export function cookieParse(str: string, options?: ParseOptions): Record<string,
     index = endIdx + 1;
   }
 
-  return result;
+  return result as T;
 }
 
 export interface SerializeOptions {

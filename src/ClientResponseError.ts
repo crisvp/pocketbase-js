@@ -23,9 +23,9 @@ export class ClientResponseError extends Error {
       this.originalError = errData.originalError;
 
       if (errData.response !== null && typeof errData.response === 'object') {
-        this.response = errData.response;
+        this.response = { ...errData.response };
       } else if (errData.data !== null && typeof errData.data === 'object') {
-        this.response = errData.data;
+        this.response = { ...errData.data };
       } else {
         this.response = {};
       }

@@ -106,17 +106,21 @@ export abstract class BaseAuthStore {
    */
   loadFromCookie(cookie: string, key = defaultCookieKey): void {
     const rawData = cookieParse(cookie || '')[key] || '';
+    function isAuthCookie(value: unknown): value is { token: string; model: AuthModel } {
+      return (
+        value !== null &&
+        typeof value === 'object' &&
+        'token' in value &&
+        typeof value.token === 'string' &&
+        'model' in value &&
+        isAuthModel(value.model)
+      );
+    }
 
-    let data: { token?: string; model?: AuthModel | null } = {};
     try {
-      data = JSON.parse(rawData);
-      // normalize
-      if (typeof data !== 'object' || Array.isArray(data)) {
-        data = {};
-      }
-      this.save(data.token || '', data.model || null);
+      if (isAuthCookie(rawData)) this.save(rawData.token || '', rawData.model || null);
+      else this.clear();
     } catch (_) {
-      // Default to unauthenticated state
       this.clear();
     }
   }
