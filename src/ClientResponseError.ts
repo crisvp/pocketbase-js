@@ -9,14 +9,23 @@ export class ClientResponseError extends Error {
   isAbort = false;
   originalError: unknown = null;
 
-  constructor(errData?: Record<string, unknown>) {
+  constructor(errData?: Error | Record<string, unknown> | string) {
     super('ClientResponseError');
 
     // Set the prototype explicitly.
     // https://github.com/Microsoft/TypeScript-wiki/blob/main/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
     Object.setPrototypeOf(this, ClientResponseError.prototype);
 
-    if (errData !== null && typeof errData === 'object') {
+    if (errData instanceof Error) {
+      this.originalError = errData;
+      this.message = errData.message;
+    } else if (errData instanceof DOMException) {
+      this.originalError = errData;
+      this.isAbort = true;
+      this.message = errData.message;
+    } else if (typeof errData === 'string') {
+      this.message = errData;
+    } else if (errData !== null && typeof errData === 'object') {
       this.url = typeof errData.url === 'string' ? errData.url : '';
       this.status = typeof errData.status === 'number' ? errData.status : 0;
       this.isAbort = !!errData.isAbort;

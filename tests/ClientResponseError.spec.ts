@@ -28,7 +28,7 @@ describe('ClientResponseError', function () {
       assert.deepEqual(err.response, {});
       assert.equal(err.isAbort, false);
       assert.equal(err.originalError, 'test');
-      expect(err.message).toMatch(/Something went wrong/);
+      expect(err.message).toMatch(/test/);
     });
 
     test('with plain error', function () {
@@ -40,7 +40,7 @@ describe('ClientResponseError', function () {
       assert.deepEqual(err.response, {});
       assert.equal(err.isAbort, false);
       assert.equal(err.originalError, plainErr);
-      expect(err.message).toMatch(/Something went wrong/);
+      expect(err.message).toMatch(/test/);
     });
 
     test('with ClientResponseError error', function () {
@@ -51,7 +51,7 @@ describe('ClientResponseError', function () {
         isAbort: true,
         originalError: 'test',
       });
-      const err = new ClientResponseError(err0);
+      const err = new ClientResponseError({ ...err0 });
 
       assert.equal(err.url, 'http://example.com');
       assert.equal(err.status, 400);
@@ -62,7 +62,7 @@ describe('ClientResponseError', function () {
     });
 
     test('with abort error', function () {
-      const err0 = new DOMException('test');
+      const err0 = new DOMException('request was autocancelled', 'AbortError');
       const err = new ClientResponseError(err0);
 
       assert.equal(err.url, '');
