@@ -33,7 +33,7 @@
     "coverage": "vitest run --coverage",
     "compile": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "lint": "pnpm compile ; eslint ."
+    "lint": "pnpm compile & eslint ."
   },
   "browserslist": [
     "defaults and fully supports es6-module",
