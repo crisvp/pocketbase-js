@@ -1,21 +1,7 @@
 {
-  "compilerOptions": {
-    "declaration": true,
-    "moduleResolution": "NodeNext",
-    "sourceMap": true,
-    "target": "ESNext",
-    "module": "NodeNext",
-    "strict": true,
-    "esModuleInterop": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
-    "outDir": "./build",
-    "paths": {
-      "@/*": ["../src/*"],
-    },
-  },
-  "include": ["**/*.ts"],
+  "extends": "../tsconfig.json",
+  "include": ["setup.ts", "test.ts", "*.mts", "./**/*.ts"],
+  "alias": {
+    "@": "../src"
+  }
 }

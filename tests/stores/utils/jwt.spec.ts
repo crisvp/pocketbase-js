@@ -1,57 +1,73 @@
-import { describe, assert, test } from "vitest";
-import { getTokenPayload, isTokenExpired } from "@/stores/utils/jwt";
+import { describe, assert, test, expect, vi } from 'vitest';
+import { getTokenPayload, isTokenExpired } from '@/stores/utils/jwt';
+import { beforeEach } from 'node:test';
+import { dummyJWT, manualDummyJWT } from '../../setup';
 
-describe("jwt", function () {
-    describe("getTokenPayload()", function () {
-        test("Should extract JWT payload without validation", function () {
-            const token =
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjN9.da77dJt5jjPU43vaaCr6WeHEXrxzB37b0edfjwyD-2M";
+const mocks = vi.hoisted(() => ({ getTokenPayload: vi.fn() }));
 
-            const payload = getTokenPayload(token);
+vi.mock('@/stores/utils/jwt', async () => {
+  const jwt = await vi.importActual<typeof import('@/stores/utils/jwt')>('@/stores/utils/jwt');
+  return {
+    ...jwt,
+    getTokenPayload: mocks.getTokenPayload.mockImplementation(jwt.getTokenPayload),
+  };
+});
 
-            assert.deepEqual(payload, { test: 123 });
-        });
+describe('jwt', function () {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2000, 1, 1, 13));
+  });
+  describe('getTokenPayload()', function () {
+    test('Should extract JWT payload without validation', function () {
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjN9.da77dJt5jjPU43vaaCr6WeHEXrxzB37b0edfjwyD-2M';
 
-        test("Should fallback to empty object on invalid JWT string", function () {
-            const testCases = ["", "abc", "a.b.c"];
-            for (let i in testCases) {
-                const test = testCases[i];
-                const payload = getTokenPayload(test);
-                assert.deepEqual(payload, {}, "scenario " + i);
-            }
-        });
+      const payload = getTokenPayload(token);
+
+      assert.deepEqual(payload, { test: 123 });
     });
 
-    describe("isTokenExpired()", function () {
-        test("Should successfully verify that a JWT token is expired or not", function () {
-            const testCases = [
-                // invalid JWT string
-                [true, ""],
-                // token with empty payload is also considered invalid JWT string
-                [
-                    true,
-                    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.Et9HFtf9R3GEMA0IICOfFMVXY7kkTX1wr4qCyhIf58U",
-                ],
-                // token without exp param
-                [
-                    false,
-                    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjN9.da77dJt5jjPU43vaaCr6WeHEXrxzB37b0edfjwyD-2M",
-                ],
-                // token with exp param in the past
-                [
-                    true,
-                    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjMsImV4cCI6MTYyNDc4ODAwMH0.WOzXh8TQh6fBXJJlOvHktBuv7D8eSyrYx4_IBj2Deyo",
-                ],
-                // token with exp param in the future
-                [
-                    false,
-                    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoxMjMsImV4cCI6MTkwODc4NDgwMH0.vVbRVx-Bs7pusxfU8TTTOEtNcUEYSzmJUboC68PB5iE",
-                ],
-            ];
-            for (let i in testCases) {
-                const test = testCases[i];
-                assert.equal(isTokenExpired(test[1] as string), test[0], "scenario " + i);
-            }
-        });
+    test('Should throw an error on invalid JWT string', function () {
+      const testCases = ['', 'abc', 'a.b.c'];
+      for (const i in testCases) {
+        const test = testCases[i];
+        expect(() => getTokenPayload(test)).toThrowError();
+      }
     });
+  });
+  //("Should successfully verify that a JWT token is expired or not", function () {
+  describe('isTokenExpired()', async () => {
+    test('errors on invalid JWT', () => {
+      expect(() => isTokenExpired('invalid JWT')).toThrow();
+    });
+    test('token without exp param', async () => {
+      const token = await manualDummyJWT({ test: 123 });
+      expect(() => isTokenExpired(token)).toThrowError();
+    });
+    test.each([
+      [false, 'token with empty payload', await dummyJWT({})],
+      [
+        true,
+        'token with exp param in the past',
+        await dummyJWT(
+          {
+            test: 123,
+          },
+          { exp: '-2h' }
+        ),
+      ],
+      [
+        false,
+        'token with exp param in the future',
+        await dummyJWT(
+          {
+            test: 123,
+          },
+          { exp: '22h' }
+        ),
+      ],
+    ])('is expired: %o for %s', (expired, _description, token) => {
+      expect(isTokenExpired(token)).toEqual(expired);
+    });
+  });
 });

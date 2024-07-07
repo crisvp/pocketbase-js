@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "checkJs": true,
     "declaration": true,
     "moduleResolution": "NodeNext",
     "sourceMap": true,
@@ -14,8 +15,8 @@
     "baseUrl": ".",
     "outDir": "./build",
     "paths": {
-      "@/*": ["./src/*"],
-    },
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["./src"],
+  "include": ["./src"]
 }

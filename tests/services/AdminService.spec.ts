@@ -1,801 +1,429 @@
-import {
-    describe,
-    assert,
-    test,
-    beforeAll,
-    afterAll,
-    beforeEach,
-    afterEach,
-} from "vitest";
-import { crudServiceTestsSuite } from "../suites";
-import { FetchMock, dummyJWT } from "../mocks";
-import Client from "@/Client";
-import { AdminService } from "@/services/AdminService";
-import { AdminModel } from "@/services/utils/dtos";
+import { describe, assert, test, beforeEach, afterEach, vi, expect } from 'vitest';
+import Client from '@/Client';
+import { AdminService } from '@/services/AdminService';
+import { AdminModel } from '@/services/utils/dtos';
+import { dummyJWT, respond } from '../setup';
+import { http, HttpResponse } from 'msw';
+import { getTokenPayload, isTokenExpired } from '@/stores/utils/jwt';
 
-describe("AdminService", function () {
-    let client!: Client;
-    let service!: AdminService;
+describe('AdminService', function () {
+  let client!: Client;
+  let service!: AdminService;
 
-    function initService() {
-        client = new Client("test_base_url");
-        service = new AdminService(client);
-    }
+  beforeEach(() => {
+    vi.useFakeTimers();
+    const date = new Date(2000, 1, 1, 13);
+    vi.setSystemTime(date);
+  });
 
-    initService();
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => void vi.useRealTimers());
 
-    // base tests
-    crudServiceTestsSuite(service, "/api/admins");
+  beforeEach(() => void vi.useFakeTimers());
+  afterEach(() => void vi.clearAllMocks());
 
-    const fetchMock = new FetchMock();
+  beforeEach(() => {
+    client = new Client('http://test.host');
+    service = new AdminService(client);
+  });
 
-    beforeEach(function () {
-        initService();
-        service.client.authStore.clear(); // reset
+  function authResponseCheck(
+    result: Record<string, unknown>,
+    expectedToken: string,
+    expectedAdmin: Partial<AdminModel>
+  ) {
+    assert.isNotEmpty(result);
+    assert.equal(result.token, expectedToken);
+    assert.deepEqual(result.admin, expectedAdmin);
+    assert.equal(service.client.authStore.token, expectedToken);
+    assert.deepEqual(service.client.authStore.model, expectedAdmin);
+  }
+
+  // more tests:
+  // ---------------------------------------------------------------
+
+  describe('AuthStore sync', async () => {
+    const token = await dummyJWT({ id: 'test123' });
+    test('Should update the AuthStore admin model on matching update id', async function () {
+      respond(http.patch('*/api/admins/test123', () => HttpResponse.json({ id: 'test123', email: 'new@example.com' })));
+      service.client.authStore.save(token, {
+        id: 'test123',
+        email: 'old@example.com',
+      });
+
+      await service.update('test123', { email: 'new@example.com' });
+
+      assert.equal(service.client.authStore.model?.email, 'new@example.com');
     });
 
-    beforeAll(function () {
-        fetchMock.init();
+    test('Should not update the AuthStore admin model on mismatched update id', async function () {
+      respond(http.patch('*/api/admins/test123', () => HttpResponse.json({ id: 'test123', email: 'new@example.com' })));
+
+      service.client.authStore.save(token, {
+        id: 'test456',
+        email: 'old@example.com',
+      });
+
+      await service.update('test123', { email: 'new@example.com' });
+
+      assert.equal(service.client.authStore.model?.email, 'old@example.com');
     });
 
-    afterAll(function () {
-        fetchMock.restore();
+    test('Should delete the AuthStore admin model on matching delete id', async function () {
+      respond(http.delete('*/api/admins/test123', () => HttpResponse.json({ status: 204 })));
+
+      service.client.authStore.save(token, { id: 'test123' });
+
+      await service.delete('test123');
+
+      assert.isNull(service.client.authStore.model);
     });
 
-    afterEach(function () {
-        fetchMock.clearMocks();
+    test('Should not delete the AuthStore admin model on mismatched delete id', async function () {
+      respond(http.delete('*/api/admins/test123', () => HttpResponse.json({ status: 204 })));
+
+      service.client.authStore.save(token, { id: 'test456' });
+
+      await service.delete('test123');
+
+      assert.isNotNull(service.client.authStore.model);
+    });
+  });
+
+  describe('authWithPassword()', function () {
+    test('Should auth an admin by its email and password', async function () {
+      let inputValidationError;
+      const token = await dummyJWT({ id: 'id_authorize' });
+      respond(
+        http.post('*/api/admins/auth-with-password', async ({ request }) => {
+          try {
+            const body = await request.json();
+            expect(body).toEqual({
+              identity: 'test@example.com',
+              password: '123456',
+            });
+          } catch (e) {
+            inputValidationError = e;
+          }
+          return HttpResponse.json({
+            token,
+            admin: { id: 'id_authorize' },
+          });
+        })
+      );
+
+      const result = await service.authWithPassword('test@example.com', '123456', {
+        q1: 456,
+        headers: { 'x-test': '123' },
+      });
+
+      if (inputValidationError) throw inputValidationError;
+      authResponseCheck(result, token, service.decode({ id: 'id_authorize' }));
+    });
+  });
+
+  describe('authRefresh()', function () {
+    test('Should refresh an authorized admin instance', async function () {
+      const token = await dummyJWT({ id: 'id_refresh' });
+      respond(
+        http.post('*/api/admins/auth-refresh', () =>
+          HttpResponse.json({
+            token,
+            admin: { id: 'id_refresh' },
+          })
+        )
+      );
+
+      const result = await service.authRefresh({
+        q1: 456,
+        headers: { 'x-test': '123' },
+      });
+
+      authResponseCheck(result, token, service.decode({ id: 'id_refresh' }));
+    });
+  });
+
+  describe('requestPasswordReset()', function () {
+    test('Should send a password reset request', async function () {
+      respond(
+        http.post('*/api/admins/request-password-reset', async ({ request }) => {
+          expect(await request.json()).toEqual({ email: 'test@example.com' });
+          return HttpResponse.json({ status: 204 });
+        })
+      );
+      const result = await service.requestPasswordReset('test@example.com', {
+        q1: 456,
+        headers: { 'x-test': '123' },
+      });
+
+      assert.isTrue(result);
+    });
+  });
+
+  describe('confirmPasswordReset()', function () {
+    test('Should confirm a password reset request (2)', async function () {
+      respond(
+        http.post('*/api/admins/confirm-password-reset', async ({ request }) => {
+          const body = await request.json();
+          expect(body).toEqual({
+            token: 'test',
+            password: '123',
+            passwordConfirm: '456',
+          });
+          return HttpResponse.json({ status: 204 });
+        })
+      );
+
+      const result = await service.confirmPasswordReset('test', '123', '456', {
+        q1: 456,
+        headers: { 'x-test': '123' },
+      });
+
+      assert.isTrue(result);
+    });
+  });
+
+  describe('auto refresh', function () {
+    const makeAuthSpy = (token: string) =>
+      vi.fn(async ({ request }) => {
+        const body = await request.json();
+        expect(body).toEqual({
+          identity: 'test@example.com',
+          password: '123456',
+        });
+        return HttpResponse.json({ token, admin: { id: 'test_id' } });
+      });
+
+    const makeRefreshSpy = (token: string) => vi.fn(async () => HttpResponse.json({ token, admin: { id: 'test_id' } }));
+
+    const customSpy = vi.fn(() => HttpResponse.json({ status: 200 }));
+
+    test('no threshold - should do nothing in addition if the token has expired', async function () {
+      const token = await dummyJWT({
+        id: 'test_id',
+        type: 'admin',
+        exp: (new Date(Date.now() - 1 * 60000).getTime() / 1000) << 0,
+      });
+
+      respond(http.post('*/api/admins/auth-with-password', makeAuthSpy(token)), http.get('*/custom', customSpy));
+
+      const authResult = await service.authWithPassword('test@example.com', '123456', {
+        autoRefreshThreshold: 0,
+        query: { a: 1 },
+      });
+
+      authResponseCheck(authResult, token, service.decode({ id: 'test_id' }));
+
+      await service.client.send('/custom', {});
     });
 
-    function authResponseCheck(
-        result: { [key: string]: any },
-        expectedToken: string,
-        expectedAdmin: AdminModel,
-    ) {
-        assert.isNotEmpty(result);
-        assert.equal(result.token, expectedToken);
-        assert.deepEqual(result.admin, expectedAdmin);
-        assert.equal(service.client.authStore.token, expectedToken);
-        assert.deepEqual(service.client.authStore.model, expectedAdmin);
-    }
+    test('new auth - should reset the auto refresh handling', async function () {
+      const token = await dummyJWT({
+        id: 'test_id',
+        type: 'admin',
+        exp: (new Date(Date.now() - 1 * 60000).getTime() / 1000) << 0,
+      });
 
-    // more tests:
-    // ---------------------------------------------------------------
+      const authWithPasswordSpy = makeAuthSpy(token);
+      respond(http.post('*/api/admins/auth-with-password', authWithPasswordSpy), http.get('*/custom', customSpy));
 
-    describe("AuthStore sync", function () {
-        test("Should update the AuthStore admin model on matching update id", async function () {
-            fetchMock.on({
-                method: "PATCH",
-                url: service.client.buildUrl("/api/admins/test123"),
-                replyCode: 200,
-                replyBody: {
-                    id: "test123",
-                    email: "new@example.com",
-                },
-            });
+      const authResult1 = await service.authWithPassword('test@example.com', '123456', {
+        autoRefreshThreshold: 30 * 60,
+        query: { a: 1 },
+      });
+      authResponseCheck(authResult1, token, service.decode({ id: 'test_id' }));
 
-            service.client.authStore.save("test_token", {
-                id: "test123",
-                email: "old@example.com",
-            } as any);
+      // manually reauthenticate without the auto refresh threshold
+      const authResult2 = await service.authWithPassword('test@example.com', '123456', {
+        query: { a: 1 },
+      });
+      authResponseCheck(authResult2, token, service.decode({ id: 'test_id' }));
 
-            await service.update("test123", { email: "new@example.com" });
+      await service.client.send('/custom', {});
+      await service.client.send('/custom', {});
 
-            assert.equal(service.client.authStore.model?.email, "new@example.com");
-        });
-
-        test("Should not update the AuthStore admin model on mismatched update id", async function () {
-            fetchMock.on({
-                method: "PATCH",
-                url: service.client.buildUrl("/api/admins/test123"),
-                replyCode: 200,
-                replyBody: {
-                    id: "test123",
-                    email: "new@example.com",
-                },
-            });
-
-            service.client.authStore.save("test_token", {
-                id: "test456",
-                email: "old@example.com",
-            } as any);
-
-            await service.update("test123", { email: "new@example.com" });
-
-            assert.equal(service.client.authStore.model?.email, "old@example.com");
-        });
-
-        test("Should delete the AuthStore admin model on matching delete id", async function () {
-            fetchMock.on({
-                method: "DELETE",
-                url: service.client.buildUrl("/api/admins/test123"),
-                replyCode: 204,
-            });
-
-            service.client.authStore.save("test_token", { id: "test123" } as any);
-
-            await service.delete("test123");
-
-            assert.isNull(service.client.authStore.model);
-        });
-
-        test("Should not delete the AuthStore admin model on mismatched delete id", async function () {
-            fetchMock.on({
-                method: "DELETE",
-                url: service.client.buildUrl("/api/admins/test123"),
-                replyCode: 204,
-            });
-
-            service.client.authStore.save("test_token", { id: "test456" } as any);
-
-            await service.delete("test123");
-
-            assert.isNotNull(service.client.authStore.model);
-        });
+      expect(authWithPasswordSpy).toHaveBeenCalledTimes(2);
+      expect(customSpy).toHaveBeenCalledTimes(2);
     });
 
-    describe("authWithPassword()", function () {
-        test("(legacy) Should auth an admin by its email and password", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/auth-with-password") + "?q1=456",
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                    b1: 123,
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: "token_authorize",
-                    admin: { id: "id_authorize" },
-                },
-            });
+    test('should do nothing if the token is still valid', async function () {
+      const token = await dummyJWT({
+        id: 'test_id',
+        type: 'admin',
+        exp: (new Date(Date.now() + 31 * 60000).getTime() / 1000) << 0,
+      });
 
-            const result = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                { b1: 123 },
-                { q1: 456 },
-            );
+      respond(http.post('*/api/admins/auth-with-password', makeAuthSpy(token)), http.get('*/custom', customSpy));
 
-            authResponseCheck(
-                result,
-                "token_authorize",
-                service.decode({ id: "id_authorize" }),
-            );
-        });
+      const authResult = await service.authWithPassword('test@example.com', '123456', {
+        autoRefreshThreshold: 30 * 60,
+        query: { a: 1 },
+      });
 
-        test("Should auth an admin by its email and password", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/auth-with-password") + "?q1=456",
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: "token_authorize",
-                    admin: { id: "id_authorize" },
-                },
-            });
+      await service.client.send('/custom', {});
 
-            const result = await service.authWithPassword("test@example.com", "123456", {
-                q1: 456,
-                headers: { "x-test": "123" },
-            });
-
-            authResponseCheck(
-                result,
-                "token_authorize",
-                service.decode({ id: "id_authorize" }),
-            );
-        });
+      authResponseCheck(authResult, token, service.decode({ id: 'test_id' }));
     });
 
-    describe("authRefresh()", function () {
-        test("(legacy) Should refresh an authorized admin instance", async function () {
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh") + "?q1=456",
-                body: { b1: 123 },
-                replyCode: 200,
-                replyBody: {
-                    token: "token_refresh",
-                    admin: { id: "id_refresh" },
-                },
-            });
+    test('should call authRefresh if the token is going to expire', async function () {
+      const token = await dummyJWT(
+        {
+          id: 'test_id',
+          type: 'admin',
+        },
+        { exp: '29m' }
+      );
 
-            const result = await service.authRefresh({ b1: 123 }, { q1: 456 });
+      const newToken = await dummyJWT(
+        {
+          id: 'test_id',
+          type: 'admin',
+        },
+        { exp: '31m' }
+      );
 
-            authResponseCheck(
-                result,
-                "token_refresh",
-                service.decode({ id: "id_refresh" }),
-            );
-        });
+      const authWithPasswordSpy = makeAuthSpy(token);
+      const authRefreshSpy = makeRefreshSpy(newToken);
 
-        test("Should refresh an authorized admin instance", async function () {
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh") + "?q1=456",
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: "token_refresh",
-                    admin: { id: "id_refresh" },
-                },
-            });
+      respond(
+        http.post('*/api/admins/auth-with-password', authWithPasswordSpy),
+        http.post('*/api/admins/auth-refresh', authRefreshSpy),
+        http.get('*/custom', customSpy)
+      );
 
-            const result = await service.authRefresh({
-                q1: 456,
-                headers: { "x-test": "123" },
-            });
+      await service.authWithPassword('test@example.com', '123456', {
+        autoRefreshThreshold: 30 * 60,
+        query: { a: 1 },
+      });
 
-            authResponseCheck(
-                result,
-                "token_refresh",
-                service.decode({ id: "id_refresh" }),
-            );
-        });
+      expect(service.client.authStore.token).toEqual(token);
+      expect(isTokenExpired(token, 30 * 60)).toBeTruthy();
+
+      await service.client.send('/custom', {});
+      await service.client.send('/custom', {});
+      expect(getTokenPayload(service.client.authStore.token)).not.toEqual(getTokenPayload(token));
+      expect(service.client.authStore.token).toEqual(newToken);
+
+      expect(authWithPasswordSpy).toHaveBeenCalledTimes(1);
+      expect(authRefreshSpy).toHaveBeenCalledTimes(1);
+      expect(customSpy).toHaveBeenCalledTimes(2);
     });
 
-    describe("requestPasswordReset()", function () {
-        test("(legacy) Should send a password reset request", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/request-password-reset") +
-                    "?q1=456",
-                body: {
-                    email: "test@example.com",
-                    b1: 123,
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
+    test('should reauthenticate if the token is going to expire and the auto authRefresh fails', async function () {
+      vi.setSystemTime(new Date(2020, 1, 1, 13));
 
-            const result = await service.requestPasswordReset(
-                "test@example.com",
-                { b1: 123 },
-                { q1: 456 },
-            );
+      const token = await dummyJWT(
+        {
+          id: 'test_id',
+          type: 'admin',
+        },
+        { exp: '29m' }
+      );
+      const newToken = await dummyJWT(
+        {
+          id: 'test_id',
+          type: 'admin',
+        },
+        { exp: '31m' }
+      );
 
-            assert.isTrue(result);
-        });
+      const authWithPasswordSpy = makeAuthSpy(token);
+      const authRefreshSpy = makeRefreshSpy(newToken);
+      respond(
+        http.post('*/api/admins/auth-with-password', authWithPasswordSpy),
+        http.post('*/api/admins/auth-refresh', authRefreshSpy),
+        http.get('*/custom', customSpy)
+      );
 
-        test("Should send a password reset request", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/request-password-reset") +
-                    "?q1=456",
-                body: {
-                    email: "test@example.com",
-                },
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
+      const authResult = await service.authWithPassword('test@example.com', '123456', {
+        autoRefreshThreshold: 30 * 60,
+        query: { a: 1 },
+      });
 
-            const result = await service.requestPasswordReset("test@example.com", {
-                q1: 456,
-                headers: { "x-test": "123" },
-            });
+      authResponseCheck(authResult, token, service.decode({ id: 'test_id' }));
 
-            assert.isTrue(result);
-        });
+      authRefreshSpy.mockReturnValue(Promise.resolve(HttpResponse.json({ status: 500 })));
+      authWithPasswordSpy.mockReturnValue(
+        Promise.resolve(
+          HttpResponse.json({
+            token: newToken,
+            admin: { id: 'test_id' },
+          })
+        )
+      );
+
+      await service.client.send('/custom', {});
+      await service.client.send('/custom', {});
+
+      expect(authWithPasswordSpy).toHaveBeenCalledTimes(2);
+      expect(authRefreshSpy).toHaveBeenCalledTimes(1);
+      expect(customSpy).toHaveBeenCalledTimes(2);
+
+      assert.equal(service.client.authStore.token, newToken);
     });
 
-    describe("confirmPasswordReset()", function () {
-        test("(legacy) Should confirm a password reset request", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/confirm-password-reset") +
-                    "?q1=456",
-                body: {
-                    token: "test",
-                    password: "123",
-                    passwordConfirm: "456",
-                    b1: 123,
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
+    test('should reauthenticate if the token is expired', async function () {
+      const date = new Date(2020, 1, 1, 13);
+      vi.setSystemTime(date);
 
-            const result = await service.confirmPasswordReset(
-                "test",
-                "123",
-                "456",
-                { b1: 123 },
-                { q1: 456 },
-            );
+      const token = await dummyJWT(
+        {
+          id: 'test_id',
+          type: 'admin',
+        },
+        { exp: '29m' }
+      );
+      const newToken = await dummyJWT(
+        {
+          id: 'test_id',
+          type: 'admin',
+        },
+        { exp: '31m' }
+      );
+      const expiredToken = await dummyJWT(
+        {
+          id: 'test_id',
+          type: 'admin',
+        },
+        { exp: '1y ago' }
+      );
 
-            assert.isTrue(result);
-        });
+      const authWithPasswordSpy = makeAuthSpy(token);
+      const authRefreshSpy = makeRefreshSpy(newToken);
 
-        test("Should confirm a password reset request", async function () {
-            fetchMock.on({
-                method: "POST",
-                url:
-                    service.client.buildUrl("/api/admins/confirm-password-reset") +
-                    "?q1=456",
-                body: {
-                    token: "test",
-                    password: "123",
-                    passwordConfirm: "456",
-                },
-                additionalMatcher: (_, config) => {
-                    return config?.headers?.["x-test"] === "123";
-                },
-                replyCode: 204,
-                replyBody: true,
-            });
+      respond(
+        http.post('*/api/admins/auth-with-password', authWithPasswordSpy),
+        http.post('*/api/admins/auth-refresh', authRefreshSpy),
+        http.get('*/custom', customSpy)
+      );
 
-            const result = await service.confirmPasswordReset("test", "123", "456", {
-                q1: 456,
-                headers: { "x-test": "123" },
-            });
+      // This is called to register the auth refresh handler
+      const authResult = await service.authWithPassword('test@example.com', '123456', {
+        autoRefreshThreshold: 30 * 60,
+        query: { a: 1 },
+      });
 
-            assert.isTrue(result);
-        });
+      authResponseCheck(authResult, token, service.decode({ id: 'test_id' }));
+
+      authWithPasswordSpy.mockReturnValueOnce(
+        Promise.resolve(HttpResponse.json({ token: newToken, admin: { id: 'test_id' } }))
+      );
+
+      // Forcibly set the expired token (would normally throw)
+      const tokenGetter = vi.spyOn(service.client.authStore, 'token', 'get');
+      tokenGetter.mockReturnValue(expiredToken);
+
+      // This will re-auth
+      await service.client.send('/custom', {});
+      tokenGetter.mockRestore();
+      expect(service.client.authStore.token).toEqual(newToken);
+      await service.client.send('/custom', {});
+
+      // 1 for the initial auth, 1 for the re-auth
+      expect(authWithPasswordSpy).toHaveBeenCalledTimes(2);
+      // not called, because the token expired more than 30 minutes ago
+      expect(authRefreshSpy).toHaveBeenCalledTimes(0);
+      expect(customSpy).toHaveBeenCalledTimes(2);
     });
-
-    describe("auto refresh", function () {
-        test("no threshold - should do nothing in addition if the token has expired", async function () {
-            const token = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: (new Date(Date.now() - 1 * 60000).getTime() / 1000) << 0,
-            });
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-with-password?a=1"),
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: token,
-                    admin: { id: "test_id" },
-                },
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: service.client.buildUrl("/custom"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], token); // same old token
-                    return true;
-                },
-                replyCode: 204,
-                replyBody: null,
-            });
-
-            const authResult = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                {
-                    autoRefreshThreshold: 0,
-                    query: { a: 1 },
-                },
-            );
-
-            authResponseCheck(authResult, token, service.decode({ id: "test_id" }));
-
-            await service.client.send("/custom", {});
-        });
-
-        test("new auth - should reset the auto refresh handling", async function () {
-            const token = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: (new Date(Date.now() - 1 * 60000).getTime() / 1000) << 0,
-            });
-
-            const invokes: Array<String> = [];
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-with-password?a=1"),
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                additionalMatcher: () => {
-                    invokes.push("auth-with-password");
-                    return true;
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: token,
-                    admin: { id: "test_id" },
-                },
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: service.client.buildUrl("/custom"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], token); // same old token
-                    invokes.push("custom");
-                    return true;
-                },
-                replyCode: 204,
-                replyBody: null,
-            });
-
-            const authResult1 = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                {
-                    autoRefreshThreshold: 30 * 60,
-                    query: { a: 1 },
-                },
-            );
-            authResponseCheck(authResult1, token, service.decode({ id: "test_id" }));
-
-            // manually reauthenticate without the auto refresh threshold
-            const authResult2 = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                {
-                    query: { a: 1 },
-                },
-            );
-            authResponseCheck(authResult2, token, service.decode({ id: "test_id" }));
-
-            await service.client.send("/custom", {});
-            await service.client.send("/custom", {});
-
-            assert.deepEqual(invokes, [
-                "auth-with-password",
-                "auth-with-password",
-                "custom",
-                "custom",
-            ]);
-        });
-
-        test("should do nothing if the token is still valid", async function () {
-            const token = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: (new Date(Date.now() + 31 * 60000).getTime() / 1000) << 0,
-            });
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-with-password?a=1"),
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: token,
-                    admin: { id: "test_id" },
-                },
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: service.client.buildUrl("/custom"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], token);
-                    return true;
-                },
-                replyCode: 204,
-                replyBody: null,
-            });
-
-            const authResult = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                {
-                    autoRefreshThreshold: 30 * 60,
-                    query: { a: 1 },
-                },
-            );
-
-            await service.client.send("/custom", {});
-
-            authResponseCheck(authResult, token, service.decode({ id: "test_id" }));
-        });
-
-        test("should call authRefresh if the token is going to expire", async function () {
-            const token = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: (new Date(Date.now() + 29 * 60000).getTime() / 1000) << 0,
-            });
-
-            const newToken = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: (new Date(Date.now() + 31 * 60000).getTime() / 1000) << 0,
-            });
-
-            const invokes: Array<String> = [];
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-with-password?a=1"),
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                additionalMatcher: () => {
-                    invokes.push("auth-with-password");
-                    return true;
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: token,
-                    admin: { id: "test_id" },
-                },
-            });
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh?autoRefresh=true"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], token);
-                    invokes.push("auto-auth-refresh");
-                    return true;
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: newToken,
-                    admin: { id: "test_id" },
-                },
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: service.client.buildUrl("/custom"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], newToken);
-                    invokes.push("custom");
-                    return true;
-                },
-                replyCode: 204,
-                replyBody: null,
-            });
-
-            const authResult = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                {
-                    autoRefreshThreshold: 30 * 60,
-                    query: { a: 1 },
-                },
-            );
-
-            authResponseCheck(authResult, token, service.decode({ id: "test_id" }));
-
-            await service.client.send("/custom", {});
-            await service.client.send("/custom", {});
-
-            assert.equal(service.client.authStore.token, newToken);
-            assert.deepEqual(invokes, [
-                "auth-with-password",
-                "auto-auth-refresh",
-                "custom",
-                "custom",
-            ]);
-        });
-
-        test("should reauthenticate if the token is going to expire and the auto authRefresh fails", async function () {
-            const token = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: (new Date(Date.now() + 29 * 60000).getTime() / 1000) << 0,
-            });
-
-            const newToken = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: (new Date(Date.now() + 31 * 60000).getTime() / 1000) << 0,
-            });
-
-            const invokes: Array<String> = [];
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-with-password?a=1"),
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                additionalMatcher: () => {
-                    invokes.push("auth-with-password");
-                    return true;
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: token,
-                    admin: { id: "test_id" },
-                },
-            });
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh?autoRefresh=true"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], token);
-                    invokes.push("auto-auth-refresh");
-                    return true;
-                },
-                replyCode: 400,
-                replyBody: {},
-            });
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl(
-                    "/api/admins/auth-with-password?a=1&autoRefresh=true",
-                ),
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                additionalMatcher: () => {
-                    invokes.push("auto-auth-with-password");
-                    return true;
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: newToken,
-                    admin: { id: "test_id" },
-                },
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: service.client.buildUrl("/custom"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], newToken);
-                    invokes.push("custom");
-                    return true;
-                },
-                replyCode: 204,
-                replyBody: null,
-            });
-
-            const authResult = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                {
-                    autoRefreshThreshold: 30 * 60,
-                    query: { a: 1 },
-                },
-            );
-
-            authResponseCheck(authResult, token, service.decode({ id: "test_id" }));
-
-            await service.client.send("/custom", {});
-            await service.client.send("/custom", {});
-
-            assert.equal(service.client.authStore.token, newToken);
-            assert.deepEqual(invokes, [
-                "auth-with-password",
-                "auto-auth-refresh",
-                "auto-auth-with-password",
-                "custom",
-                "custom",
-            ]);
-        });
-
-        test("should reauthenticate if the token is expired", async function () {
-            const token = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: (new Date(Date.now() - 1).getTime() / 1000) << 0,
-            });
-
-            const newToken = dummyJWT({
-                id: "test_id",
-                type: "admin",
-                exp: (new Date(Date.now() + 31 * 60000).getTime() / 1000) << 0,
-            });
-
-            const invokes: Array<String> = [];
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-with-password?a=1"),
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                additionalMatcher: () => {
-                    invokes.push("auth-with-password");
-                    return true;
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: token,
-                    admin: { id: "test_id" },
-                },
-            });
-
-            // shouldn't be invoked!
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl("/api/admins/auth-refresh?autoRefresh=true"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], token);
-                    invokes.push("auto-auth-refresh");
-                    return true;
-                },
-                replyCode: 400,
-                replyBody: {},
-            });
-
-            fetchMock.on({
-                method: "POST",
-                url: service.client.buildUrl(
-                    "/api/admins/auth-with-password?a=1&autoRefresh=true",
-                ),
-                body: {
-                    identity: "test@example.com",
-                    password: "123456",
-                },
-                additionalMatcher: () => {
-                    invokes.push("auto-auth-with-password");
-                    return true;
-                },
-                replyCode: 200,
-                replyBody: {
-                    token: newToken,
-                    admin: { id: "test_id" },
-                },
-            });
-
-            fetchMock.on({
-                method: "GET",
-                url: service.client.buildUrl("/custom"),
-                additionalMatcher: (_, config) => {
-                    assert.equal(config?.headers?.["Authorization"], newToken);
-                    invokes.push("custom");
-                    return true;
-                },
-                replyCode: 204,
-                replyBody: null,
-            });
-
-            const authResult = await service.authWithPassword(
-                "test@example.com",
-                "123456",
-                {
-                    autoRefreshThreshold: 30 * 60,
-                    query: { a: 1 },
-                },
-            );
-
-            authResponseCheck(authResult, token, service.decode({ id: "test_id" }));
-
-            await service.client.send("/custom", {});
-            await service.client.send("/custom", {});
-
-            assert.equal(service.client.authStore.token, newToken);
-            assert.deepEqual(invokes, [
-                "auth-with-password",
-                "auto-auth-with-password",
-                "custom",
-                "custom",
-            ]);
-        });
-    });
+  });
 });

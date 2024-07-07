@@ -1,134 +1,138 @@
-import { BaseAuthStore, AuthModel } from "@/stores/BaseAuthStore";
+import { BaseAuthStore, AuthModel } from '@/stores/BaseAuthStore';
+
+export interface AuthData {
+  token: string;
+  model: AuthModel;
+}
+
+function isAuthData(value: unknown): value is AuthData {
+  return typeof value === 'object' && typeof (value as AuthData).token === 'string';
+}
 
 /**
  * The default token store for browsers with auto fallback
  * to runtime/memory if local storage is undefined (eg. in node env).
  */
 export class LocalAuthStore extends BaseAuthStore {
-    private storageFallback: { [key: string]: any } = {};
-    private storageKey: string;
+  private storageFallback: Record<string, unknown> = {};
+  private storageKey: string;
 
-    constructor(storageKey = "pocketbase_auth") {
-        super();
+  constructor(storageKey = 'pocketbase_auth') {
+    super();
 
-        this.storageKey = storageKey;
+    this.storageKey = storageKey;
 
-        this._bindStorageEvent();
+    this._bindStorageEvent();
+  }
+
+  /**
+   * @inheritdoc
+   */
+  get token(): string {
+    const data = this._storageGet<AuthData>(this.storageKey);
+    if (!isAuthData(data)) return '';
+
+    return data.token;
+  }
+
+  /**
+   * @inheritdoc
+   */
+  get model(): AuthModel {
+    const data = this._storageGet<AuthModel>(this.storageKey);
+    if (!isAuthData(data)) return null;
+
+    return data.model;
+  }
+
+  /**
+   * @inheritdoc
+   */
+  save(token: string, model: AuthModel) {
+    this._storageSet(this.storageKey, {
+      token: token,
+      model: model,
+    });
+
+    super.save(token, model);
+  }
+
+  /**
+   * @inheritdoc
+   */
+  clear() {
+    this._storageRemove(this.storageKey);
+
+    super.clear();
+  }
+
+  // ---------------------------------------------------------------
+  // Internal helpers:
+  // ---------------------------------------------------------------
+
+  /**
+   * Retrieves `key` from the browser's local storage
+   * (or runtime/memory if local storage is undefined).
+   */
+  private _storageGet<T>(key: string): T | string {
+    if (typeof window !== 'undefined' && window?.localStorage) {
+      const rawValue = window.localStorage.getItem(key) || '';
+      try {
+        return JSON.parse(rawValue);
+      } catch (e) {
+        // not a json
+        return rawValue;
+      }
     }
 
-    /**
-     * @inheritdoc
-     */
-    get token(): string {
-        const data = this._storageGet(this.storageKey) || {};
+    // fallback
+    return this.storageFallback[key] as T;
+  }
 
-        return data.token || "";
+  /**
+   * Stores a new data in the browser's local storage
+   * (or runtime/memory if local storage is undefined).
+   */
+  private _storageSet(key: string, value: unknown) {
+    if (typeof window !== 'undefined' && window?.localStorage) {
+      // store in local storage
+      const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
+      window.localStorage.setItem(key, serializedValue);
+    } else {
+      // store in fallback
+      this.storageFallback[key] = value;
+    }
+  }
+
+  /**
+   * Removes `key` from the browser's local storage and the runtime/memory.
+   */
+  private _storageRemove(key: string) {
+    // delete from local storage
+    if (typeof window !== 'undefined' && window?.localStorage) {
+      window.localStorage?.removeItem(key);
     }
 
-    /**
-     * @inheritdoc
-     */
-    get model(): AuthModel {
-        const data = this._storageGet(this.storageKey) || {};
+    // delete from fallback
+    this.storageFallback[key] = undefined;
+  }
 
-        return data.model || null;
+  /**
+   * Updates the current store state on localStorage change.
+   */
+  private _bindStorageEvent() {
+    if (typeof window === 'undefined' || !window?.localStorage || !window.addEventListener) {
+      return;
     }
 
-    /**
-     * @inheritdoc
-     */
-    save(token: string, model?: AuthModel) {
-        this._storageSet(this.storageKey, {
-            token: token,
-            model: model,
-        });
+    window.addEventListener('storage', e => {
+      if (e.key != this.storageKey) {
+        return;
+      }
 
-        super.save(token, model);
-    }
-
-    /**
-     * @inheritdoc
-     */
-    clear() {
-        this._storageRemove(this.storageKey);
-
-        super.clear();
-    }
-
-    // ---------------------------------------------------------------
-    // Internal helpers:
-    // ---------------------------------------------------------------
-
-    /**
-     * Retrieves `key` from the browser's local storage
-     * (or runtime/memory if local storage is undefined).
-     */
-    private _storageGet(key: string): any {
-        if (typeof window !== "undefined" && window?.localStorage) {
-            const rawValue = window.localStorage.getItem(key) || "";
-            try {
-                return JSON.parse(rawValue);
-            } catch (e) {
-                // not a json
-                return rawValue;
-            }
-        }
-
-        // fallback
-        return this.storageFallback[key];
-    }
-
-    /**
-     * Stores a new data in the browser's local storage
-     * (or runtime/memory if local storage is undefined).
-     */
-    private _storageSet(key: string, value: any) {
-        if (typeof window !== "undefined" && window?.localStorage) {
-            // store in local storage
-            let normalizedVal = value;
-            if (typeof value !== "string") {
-                normalizedVal = JSON.stringify(value);
-            }
-            window.localStorage.setItem(key, normalizedVal);
-        } else {
-            // store in fallback
-            this.storageFallback[key] = value;
-        }
-    }
-
-    /**
-     * Removes `key` from the browser's local storage and the runtime/memory.
-     */
-    private _storageRemove(key: string) {
-        // delete from local storage
-        if (typeof window !== "undefined" && window?.localStorage) {
-            window.localStorage?.removeItem(key);
-        }
-
-        // delete from fallback
-        delete this.storageFallback[key];
-    }
-
-    /**
-     * Updates the current store state on localStorage change.
-     */
-    private _bindStorageEvent() {
-        if (
-            typeof window === "undefined" ||
-            !window?.localStorage ||
-            !window.addEventListener
-        ) {
-            return;
-        }
-
-        window.addEventListener("storage", (e) => {
-            if (e.key != this.storageKey) {
-                return;
-            }
-
-            const data = this._storageGet(this.storageKey) || {};
-
-            super.save(data.token || "", data.model || null);
-        });
-    }
+      const data = this._storageGet<AuthData>(this.storageKey);
+      if (!isAuthData(data)) super.clear();
+      else super.save(data.token, data.model);
+    });
+  }
 }

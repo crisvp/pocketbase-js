@@ -1,69 +1,36 @@
-// @todo remove after https://github.com/reactwg/react-native-releases/issues/287
-const isReactNative = (
-    (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') ||
-    (typeof global !== 'undefined' && (global as any).HermesInternal)
-);
-
-let atobPolyfill: Function;
-if (typeof atob === "function" && !isReactNative) {
-    atobPolyfill = atob;
-} else {
-    /**
-     * The code was extracted from:
-     * https://github.com/davidchambers/Base64.js
-     */
-    atobPolyfill = (input: any) => {
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-
-        let str = String(input).replace(/=+$/, "");
-        if (str.length % 4 == 1) {
-            throw new Error(
-                "'atob' failed: The string to be decoded is not correctly encoded.",
-            );
-        }
-
-        for (
-            // initialize result and counters
-            var bc = 0, bs, buffer, idx = 0, output = "";
-            // get next character
-            (buffer = str.charAt(idx++));
-            // character found in table? initialize bit storage and add its ascii value;
-            ~buffer &&
-                ((bs = bc % 4 ? (bs as any) * 64 + buffer : buffer),
-                    // and if not first of each 4 characters,
-                    // convert the first 8 bits to one ascii character
-                    bc++ % 4)
-                ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
-                : 0
-        ) {
-            // try to find character in table (0-63, not found => -1)
-            buffer = chars.indexOf(buffer);
-        }
-
-        return output;
-    };
-}
-
 /**
  * Returns JWT token's payload data.
  */
-export function getTokenPayload(token: string): { [key: string]: any } {
-    if (token) {
-        try {
-            const encodedPayload = decodeURIComponent(
-                atobPolyfill(token.split(".")[1])
-                    .split("")
-                    .map(function (c: string) {
-                        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-                    })
-                    .join(""),
-            );
+import * as jose from 'jose';
+import { JWTInvalid } from 'jose/errors';
 
-            return JSON.parse(encodedPayload) || {};
-        } catch (e) {}
-    }
+export function getTokenPayload<T extends jose.JWTPayload>(token: string): T {
+  try {
+    return jose.decodeJwt<T>(token);
+  } catch (e) {
+    console.warn(`Could not decode token: '${token}': ${e instanceof Error ? e.message : e}`);
+    throw e;
+  }
+}
 
-    return {};
+function possiblyValidPayload(payload: Record<string, unknown>): payload is { [key: string]: unknown; exp: number } {
+  return typeof payload === 'object' && payload !== null && 'exp' in payload;
+}
+
+export function jwtValid(token: string): boolean {
+  try {
+    return !isTokenExpired(token);
+  } catch (e) {
+    if (e instanceof JWTInvalid) return false;
+    throw e;
+  }
+}
+
+export function jwtExpiration(token: string): number {
+  const payload = getTokenPayload(token);
+  if (!possiblyValidPayload(payload)) throw new Error('Invalid token payload.');
+
+  return payload.exp;
 }
 
 /**
@@ -72,17 +39,9 @@ export function getTokenPayload(token: string): { [key: string]: any } {
  * Tokens with empty payload (eg. invalid token strings) are considered expired.
  *
  * @param token The token to check.
- * @param [expirationThreshold] Time in seconds that will be subtracted from the token `exp` property.
+ * @param [expirationThreshold] Time in seconds before expiration to consider the token expired
  */
 export function isTokenExpired(token: string, expirationThreshold = 0): boolean {
-    let payload = getTokenPayload(token);
-
-    if (
-        Object.keys(payload).length > 0 &&
-        (!payload.exp || payload.exp - expirationThreshold > Date.now() / 1000)
-    ) {
-        return false;
-    }
-
-    return true;
+  const expiration = jwtExpiration(token);
+  return expiration - expirationThreshold < Date.now() / 1000;
 }

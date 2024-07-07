@@ -1,28 +1,42 @@
 # PocketBase JavaScript SDK
 
+**This project is under active development. It may not be fully stable yet.**
+
 This is a fork of the official JavaScript SDK (browser and node) for interacting with the [PocketBase API](https://pocketbase.io/docs).
 
-It incorporates some fixes to make it play more nicely with node and other consumers.
+- [Differences from official SDK](#differences)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Caveats](#caveats)
+  - [Binding filter parameters](#binding-filter-parameters)
+  - [File upload](#file-upload)
+  - [Error handling](#error-handling)
+  - [Auth store](#auth-store)
+    - [LocalAuthStore (default)](#localauthstore-default)
+    - [AsyncAuthStore (_usually used with React Native_)](#asyncauthstore)
+    - [Custom auth store](#custom-auth-store)
+    - [Common auth store fields and methods](#common-auth-store-fields-and-methods)
+  - [Auto cancellation](#auto-cancellation)
+  - [Specify TypeScript definitions](#specify-typescript-definitions)
+  - [Custom request options](#custom-request-options)
+  - [Send hooks](#send-hooks)
+  - [SSR integration](#ssr-integration)
+  - [Security](#security)
+- [Definitions](#definitions)
+- [Development](#development)
 
--   [Installation](#installation)
--   [Usage](#usage)
--   [Caveats](#caveats)
-    -   [Binding filter parameters](#binding-filter-parameters)
-    -   [File upload](#file-upload)
-    -   [Error handling](#error-handling)
-    -   [Auth store](#auth-store)
-        -   [LocalAuthStore (default)](#localauthstore-default)
-        -   [AsyncAuthStore (_usually used with React Native_)](#asyncauthstore)
-        -   [Custom auth store](#custom-auth-store)
-        -   [Common auth store fields and methods](#common-auth-store-fields-and-methods)
-    -   [Auto cancellation](#auto-cancellation)
-    -   [Specify TypeScript definitions](#specify-typescript-definitions)
-    -   [Custom request options](#custom-request-options)
-    -   [Send hooks](#send-hooks)
-    -   [SSR integration](#ssr-integration)
-    -   [Security](#security)
--   [Definitions](#definitions)
--   [Development](#development)
+## Differences
+
+At the moment, this fork does not differ too much in usage from the
+official SDK.
+
+It is more strongly typed, and more opinionated on the data it receives.
+
+This SDK will throw more errors during development and linting, and will
+not quietly ignore exceptions.
+
+Most features marked as "legacy" or "deprecated" have been removed. The
+rest will be removed in a future version.
 
 ## Installation
 
@@ -31,8 +45,8 @@ It incorporates some fixes to make it play more nicely with node and other consu
 ```html
 <script src="/path/to/dist/pocketbase.umd.js"></script>
 <script type="text/javascript">
-    const pb = new PocketBase("https://example.com")
-    ...
+  const pb = new PocketBase("https://example.com")
+  ...
 </script>
 ```
 
@@ -40,10 +54,10 @@ _OR if you are using ES modules:_
 
 ```html
 <script type="module">
-    import PocketBase from '/path/to/dist/pocketbase.es.mjs'
+  import PocketBase from '/path/to/dist/pocketbase.es.mjs'
 
-    const pb = new PocketBase("https://example.com")
-    ...
+  const pb = new PocketBase("https://example.com")
+  ...
 </script>
 ```
 
@@ -55,10 +69,10 @@ npm install pocketbase --save
 
 ```js
 // Using ES modules (default)
-import PocketBase from "pocketbase";
+import PocketBase from 'pocketbase';
 
 // OR if you are using CommonJS modules
-const PocketBase = require("pocketbase/cjs");
+const PocketBase = require('pocketbase/cjs');
 ```
 
 > 🔧 For **Node < 17** you'll need to load a `fetch()` polyfill.
@@ -66,7 +80,7 @@ const PocketBase = require("pocketbase/cjs");
 >
 > ```js
 > // npm install cross-fetch --save
-> import "cross-fetch/polyfill";
+> import 'cross-fetch/polyfill';
 > ```
 
 ---
@@ -75,10 +89,10 @@ const PocketBase = require("pocketbase/cjs");
 >
 > ```js
 > // for server: npm install eventsource --save
-> import eventsource from "eventsource";
+> import eventsource from 'eventsource';
 >
 > // for React Native: npm install react-native-sse --save
-> import eventsource from "react-native-sse";
+> import eventsource from 'react-native-sse';
 >
 > global.EventSource = eventsource;
 > ```
@@ -117,50 +131,50 @@ The SDK comes with a helper `pb.filter(expr, params)` method to generate a filte
 **This method is also recommended when using the SDK in Node/Deno/Bun server-side list queries and accepting untrusted user input as `filter` string arguments, because it will take care to properly escape the generated string expression, avoiding eventual string injection attacks** (_on the client-side this is not much of an issue_).
 
 ```js
-const records = await pb.collection("example").getList(1, 20, {
-    // the same as: "title ~ 'te\\'st' && (totalA = 123 || totalB = 123)"
-    filter: pb.filter("title ~ {:title} && (totalA = {:num} || totalB = {:num})", {
-        title: "te'st",
-        num: 123,
-    }),
+const records = await pb.collection('example').getList(1, 20, {
+  // the same as: "title ~ 'te\\'st' && (totalA = 123 || totalB = 123)"
+  filter: pb.filter('title ~ {:title} && (totalA = {:num} || totalB = {:num})', {
+    title: "te'st",
+    num: 123,
+  }),
 });
 ```
 
 The supported placeholder parameter values are:
 
--   `string` (_single quotes are autoescaped_)
--   `number`
--   `boolean`
--   `Date` object (_will be stringified into the format expected by PocketBase_)
--   `null`
--   everything else is converted to a string using `JSON.stringify()`
+- `string` (_single quotes are autoescaped_)
+- `number`
+- `boolean`
+- `Date` object (_will be stringified into the format expected by PocketBase_)
+- `null`
+- everything else is converted to a string using `JSON.stringify()`
 
 ### File upload
 
 PocketBase Web API supports file upload via `multipart/form-data` requests,
 which means that to upload a file it is enough to provide either a [`FormData`](https://developer.mozilla.org/en-US/docs/Web/API/FormData) instance OR plain object with `File`/`Blob` prop values.
 
--   Using `FormData` as body:
+- Using `FormData` as body:
 
-    ```js
-    // the standard way to create multipart/form-data body
-    const data = new FormData();
-    data.set('title', 'lorem ipsum...')
-    data.set('document', new File(...))
+  ```js
+  // the standard way to create multipart/form-data body
+  const data = new FormData();
+  data.set('title', 'lorem ipsum...')
+  data.set('document', new File(...))
 
-    await pb.collection('example').create(data);
-    ```
+  await pb.collection('example').create(data);
+  ```
 
--   Using plain object as body _(this is the same as above and it will be converted to `FormData` behind the scenes)_:
+- Using plain object as body _(this is the same as above and it will be converted to `FormData` behind the scenes)_:
 
-    ```js
-    const data = {
-      'title':    'lorem ipsum...',
-      'document': new File(...),
-    };
+  ```js
+  const data = {
+    'title':    'lorem ipsum...',
+    'document': new File(...),
+  };
 
-    await pb.collection('example').create(data);
-    ```
+  await pb.collection('example').create(data);
+  ```
 
 ### Error handling
 
@@ -213,15 +227,15 @@ Conveniently, the default store also takes care to automatically sync the auth s
 The SDK comes also with a helper [`AsyncAuthStore`](https://github.com/pocketbase/js-sdk/blob/master/src/stores/AsyncAuthStore.ts) that you can use to integrate with any 3rd party async storage implementation (_usually this is needed when working with React Native_):
 
 ```js
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import PocketBase, { AsyncAuthStore } from "pocketbase";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import PocketBase, { AsyncAuthStore } from 'pocketbase';
 
 const store = new AsyncAuthStore({
-    save: async (serialized) => AsyncStorage.setItem("pb_auth", serialized),
-    initial: AsyncStorage.getItem("pb_auth"),
+  save: async serialized => AsyncStorage.setItem('pb_auth', serialized),
+  initial: AsyncStorage.getItem('pb_auth'),
 });
 
-const pb = new PocketBase("http://127.0.0.1:8090", store);
+const pb = new PocketBase('http://127.0.0.1:8090', store);
 ```
 
 ##### Custom auth store
@@ -229,17 +243,17 @@ const pb = new PocketBase("http://127.0.0.1:8090", store);
 In some situations it could be easier to create your own custom auth store. For this you can extend [`BaseAuthStore`](https://github.com/pocketbase/js-sdk/blob/master/src/stores/BaseAuthStore.ts) and pass the new custom instance as constructor argument to the client:
 
 ```js
-import PocketBase, { BaseAuthStore } from "pocketbase";
+import PocketBase, { BaseAuthStore } from 'pocketbase';
 
 class CustomAuthStore extends BaseAuthStore {
-    save(token, model) {
-        super.save(token, model);
+  save(token, model) {
+    super.save(token, model);
 
-        // your custom business logic...
-    }
+    // your custom business logic...
+  }
 }
 
-const pb = new PocketBase("http://127.0.0.1:8090", new CustomAuthStore());
+const pb = new PocketBase('http://127.0.0.1:8090', new CustomAuthStore());
 ```
 
 ##### Common auth store fields and methods
@@ -273,12 +287,12 @@ To _"listen"_ for changes in the auth store, you can register a new listener via
 ```js
 // triggered everytime on store change
 const removeListener1 = pb.authStore.onChange((token, model) => {
-    console.log("New store data 1:", token, model);
+  console.log('New store data 1:', token, model);
 });
 
 // triggered once right after registration and everytime on store change
 const removeListener2 = pb.authStore.onChange((token, model) => {
-    console.log("New store data 2:", token, model);
+  console.log('New store data 2:', token, model);
 }, true);
 
 // (optional) removes the attached listeners
@@ -292,9 +306,9 @@ The SDK client will auto cancel duplicated pending requests for you.
 For example, if you have the following 3 duplicated endpoint calls, only the last one will be executed, while the first 2 will be cancelled with `ClientResponseError` error:
 
 ```js
-pb.collection("example").getList(1, 20); // cancelled
-pb.collection("example").getList(2, 20); // cancelled
-pb.collection("example").getList(3, 20); // executed
+pb.collection('example').getList(1, 20); // cancelled
+pb.collection('example').getList(2, 20); // cancelled
+pb.collection('example').getList(3, 20); // executed
 ```
 
 To change this behavior per request basis, you can adjust the `requestKey: null|string` special query parameter.
@@ -304,19 +318,19 @@ Or set it to a unique string that will be used as request identifier and based o
 Example:
 
 ```js
-pb.collection("example").getList(1, 20); // cancelled
-pb.collection("example").getList(1, 20); // executed
-pb.collection("example").getList(1, 20, { requestKey: "test" }); // cancelled
-pb.collection("example").getList(1, 20, { requestKey: "test" }); // executed
-pb.collection("example").getList(1, 20, { requestKey: null }); // executed
-pb.collection("example").getList(1, 20, { requestKey: null }); // executed
+pb.collection('example').getList(1, 20); // cancelled
+pb.collection('example').getList(1, 20); // executed
+pb.collection('example').getList(1, 20, { requestKey: 'test' }); // cancelled
+pb.collection('example').getList(1, 20, { requestKey: 'test' }); // executed
+pb.collection('example').getList(1, 20, { requestKey: null }); // executed
+pb.collection('example').getList(1, 20, { requestKey: null }); // executed
 
 // globally disable auto cancellation
 pb.autoCancellation(false);
 
-pb.collection("example").getList(1, 20); // executed
-pb.collection("example").getList(1, 20); // executed
-pb.collection("example").getList(1, 20); // executed
+pb.collection('example').getList(1, 20); // executed
+pb.collection('example').getList(1, 20); // executed
+pb.collection('example').getList(1, 20); // executed
 ```
 
 **If you want to globally disable the auto cancellation behavior, you could set `pb.autoCancellation(false)`.**
@@ -329,13 +343,13 @@ You could specify custom TypeScript definitions for your Record models using gen
 
 ```ts
 interface Task {
-    // type the collection fields you want to use...
-    id: string;
-    name: string;
+  // type the collection fields you want to use...
+  id: string;
+  name: string;
 }
 
-pb.collection("tasks").getList<Task>(1, 20); // -> results in Promise<ListResult<Task>>
-pb.collection("tasks").getOne<Task>("RECORD_ID"); // -> results in Promise<Task>
+pb.collection('tasks').getList<Task>(1, 20); // -> results in Promise<ListResult<Task>>
+pb.collection('tasks').getOne<Task>('RECORD_ID'); // -> results in Promise<Task>
 ```
 
 Alternatively, if you don't want to type the generic argument every time you can define a global PocketBase type using type assertion:
@@ -370,9 +384,9 @@ pb.collection('posts').getOne("RECORD_ID") // -> results in Promise<Post>
 
 All API services accept an optional `options` argument (usually the last one and of type [`SendOptions`](https://github.com/pocketbase/js-sdk/blob/master/src/services/utils/options.ts)), that can be used to provide:
 
--   custom headers for a single request
--   custom fetch options
--   or even your own `fetch` implementation
+- custom headers for a single request
+- custom fetch options
+- or even your own `fetch` implementation
 
 For example:
 
@@ -403,37 +417,37 @@ Sometimes you may want to modify the request data globally or to customize the r
 
 To accomplish this, the SDK provides 2 function hooks:
 
--   `beforeSend` - triggered right before sending the `fetch` request, allowing you to inspect/modify the request config.
+- `beforeSend` - triggered right before sending the `fetch` request, allowing you to inspect/modify the request config.
 
-    ```js
-    const pb = new PocketBase("http://127.0.0.1:8090");
+  ```js
+  const pb = new PocketBase('http://127.0.0.1:8090');
 
-    pb.beforeSend = function (url, options) {
-        // For list of the possible request options properties check
-        // https://developer.mozilla.org/en-US/docs/Web/API/fetch#options
-        options.headers = Object.assign({}, options.headers, {
-            "X-Custom-Header": "example",
-        });
+  pb.beforeSend = function (url, options) {
+    // For list of the possible request options properties check
+    // https://developer.mozilla.org/en-US/docs/Web/API/fetch#options
+    options.headers = Object.assign({}, options.headers, {
+      'X-Custom-Header': 'example',
+    });
 
-        return { url, options };
-    };
-    ```
+    return { url, options };
+  };
+  ```
 
--   `afterSend` - triggered after successfully sending the `fetch` request, allowing you to inspect/modify the response object and its parsed data.
+- `afterSend` - triggered after successfully sending the `fetch` request, allowing you to inspect/modify the response object and its parsed data.
 
-    ```js
-    const pb = new PocketBase("http://127.0.0.1:8090");
+  ```js
+  const pb = new PocketBase('http://127.0.0.1:8090');
 
-    pb.afterSend = function (response, data) {
-        // do something with the response state
-        console.log(response.status);
+  pb.afterSend = function (response, data) {
+    // do something with the response state
+    console.log(response.status);
 
-        return Object.assign(data, {
-            // extend the data...
-            additionalField: 123,
-        });
-    };
-    ```
+    return Object.assign(data, {
+      // extend the data...
+      additionalField: 123,
+    });
+  };
+  ```
 
 ### SSR integration
 
@@ -451,7 +465,7 @@ should make working with cookies a little bit easier:
 
 ```js
 // update the store with the parsed data from the cookie string
-pb.authStore.loadFromCookie("pb_auth=...");
+pb.authStore.loadFromCookie('pb_auth=...');
 
 // exports the store data as cookie, with option to extend the default SameSite, Secure, HttpOnly, Path and Expires attributes
 pb.authStore.exportToCookie({ httpOnly: false }); // Output: 'pb_auth=...'
@@ -467,30 +481,29 @@ and pass it to the other server-side actions using the `event.locals`.
 
 ```js
 // src/hooks.server.js
-import PocketBase from "pocketbase";
+import PocketBase from 'pocketbase';
 
 /** @type {import('@sveltejs/kit').Handle} */
 export async function handle({ event, resolve }) {
-    event.locals.pb = new PocketBase("http://127.0.0.1:8090");
+  event.locals.pb = new PocketBase('http://127.0.0.1:8090');
 
-    // load the store data from the request cookie string
-    event.locals.pb.authStore.loadFromCookie(event.request.headers.get("cookie") || "");
+  // load the store data from the request cookie string
+  event.locals.pb.authStore.loadFromCookie(event.request.headers.get('cookie') || '');
 
-    try {
-        // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
-        event.locals.pb.authStore.isValid &&
-            (await event.locals.pb.collection("users").authRefresh());
-    } catch (_) {
-        // clear the auth store on failed refresh
-        event.locals.pb.authStore.clear();
-    }
+  try {
+    // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
+    event.locals.pb.authStore.isValid && (await event.locals.pb.collection('users').authRefresh());
+  } catch (_) {
+    // clear the auth store on failed refresh
+    event.locals.pb.authStore.clear();
+  }
 
-    const response = await resolve(event);
+  const response = await resolve(event);
 
-    // send back the default 'pb_auth' cookie to the client with the latest store state
-    response.headers.append("set-cookie", event.locals.pb.authStore.exportToCookie());
+  // send back the default 'pb_auth' cookie to the client with the latest store state
+  response.headers.append('set-cookie', event.locals.pb.authStore.exportToCookie());
 
-    return response;
+  return response;
 }
 ```
 
@@ -504,13 +517,11 @@ And then, in some of your server-side actions, you could directly access the pre
  * @type {import('./$types').RequestHandler}
  */
 export async function POST({ request, locals }) {
-    const { email, password } = await request.json();
+  const { email, password } = await request.json();
 
-    const { token, record } = await locals.pb
-        .collection("users")
-        .authWithPassword(email, password);
+  const { token, record } = await locals.pb.collection('users').authWithPassword(email, password);
 
-    return new Response("Success...");
+  return new Response('Success...');
 }
 ```
 
@@ -518,14 +529,14 @@ For proper `locals.pb` type detection, you can also add `PocketBase` in your you
 
 ```ts
 // src/app.d.ts
-import PocketBase from "pocketbase";
+import PocketBase from 'pocketbase';
 
 declare global {
-    declare namespace App {
-        interface Locals {
-            pb: PocketBase;
-        }
+  declare namespace App {
+    interface Locals {
+      pb: PocketBase;
     }
+  }
 }
 ```
 
@@ -538,34 +549,31 @@ To integrate with Astro SSR, you could create the PocketBase client in the [Midd
 
 ```ts
 // src/middleware/index.ts
-import PocketBase from "pocketbase";
+import PocketBase from 'pocketbase';
 
-import { defineMiddleware } from "astro/middleware";
+import { defineMiddleware } from 'astro/middleware';
 
-export const onRequest = defineMiddleware(
-    async ({ locals, request }: any, next: () => any) => {
-        locals.pb = new PocketBase("http://127.0.0.1:8090");
+export const onRequest = defineMiddleware(async ({ locals, request }: any, next: () => any) => {
+  locals.pb = new PocketBase('http://127.0.0.1:8090');
 
-        // load the store data from the request cookie string
-        locals.pb.authStore.loadFromCookie(request.headers.get("cookie") || "");
+  // load the store data from the request cookie string
+  locals.pb.authStore.loadFromCookie(request.headers.get('cookie') || '');
 
-        try {
-            // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
-            locals.pb.authStore.isValid &&
-                (await locals.pb.collection("users").authRefresh());
-        } catch (_) {
-            // clear the auth store on failed refresh
-            locals.pb.authStore.clear();
-        }
+  try {
+    // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
+    locals.pb.authStore.isValid && (await locals.pb.collection('users').authRefresh());
+  } catch (_) {
+    // clear the auth store on failed refresh
+    locals.pb.authStore.clear();
+  }
 
-        const response = await next();
+  const response = await next();
 
-        // send back the default 'pb_auth' cookie to the client with the latest store state
-        response.headers.append("set-cookie", locals.pb.authStore.exportToCookie());
+  // send back the default 'pb_auth' cookie to the client with the latest store state
+  response.headers.append('set-cookie', locals.pb.authStore.exportToCookie());
 
-        return response;
-    },
-);
+  return response;
+});
 ```
 
 And then, in your Astro file's component script, you could directly access the previously created `locals.pb` instance:
@@ -587,10 +595,10 @@ Although middleware functionality is available in both `SSG` and `SSR` projects,
 
 ```mjs
 // astro.config.mjs
-import { defineConfig } from "astro/config";
+import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-    output: "server",
+  output: 'server',
 });
 ```
 
@@ -604,41 +612,41 @@ and provide it as a helper to the `nuxtApp` instance:
 
 ```js
 // plugins/pocketbase.js
-import PocketBase from "pocketbase";
+import PocketBase from 'pocketbase';
 
 export default defineNuxtPlugin(async () => {
-    const pb = new PocketBase("http://127.0.0.1:8090");
+  const pb = new PocketBase('http://127.0.0.1:8090');
 
-    const cookie = useCookie("pb_auth", {
-        path: "/",
-        secure: true,
-        sameSite: "strict",
-        httpOnly: false, // change to "true" if you want only server-side access
-        maxAge: 604800,
-    });
+  const cookie = useCookie('pb_auth', {
+    path: '/',
+    secure: true,
+    sameSite: 'strict',
+    httpOnly: false, // change to "true" if you want only server-side access
+    maxAge: 604800,
+  });
 
-    // load the store data from the cookie value
-    pb.authStore.save(cookie.value?.token, cookie.value?.model);
+  // load the store data from the cookie value
+  pb.authStore.save(cookie.value?.token, cookie.value?.model);
 
-    // send back the default 'pb_auth' cookie to the client with the latest store state
-    pb.authStore.onChange(() => {
-        cookie.value = {
-            token: pb.authStore.token,
-            model: pb.authStore.model,
-        };
-    });
-
-    try {
-        // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
-        pb.authStore.isValid && (await pb.collection("users").authRefresh());
-    } catch (_) {
-        // clear the auth store on failed refresh
-        pb.authStore.clear();
-    }
-
-    return {
-        provide: { pb },
+  // send back the default 'pb_auth' cookie to the client with the latest store state
+  pb.authStore.onChange(() => {
+    cookie.value = {
+      token: pb.authStore.token,
+      model: pb.authStore.model,
     };
+  });
+
+  try {
+    // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
+    pb.authStore.isValid && (await pb.collection('users').authRefresh());
+  } catch (_) {
+    // clear the auth store on failed refresh
+    pb.authStore.clear();
+  }
+
+  return {
+    provide: { pb },
+  };
 });
 ```
 
@@ -646,16 +654,16 @@ And then in your component you could access it like this:
 
 ```html
 <template>
-    <div>Show: {{ data }}</div>
+  <div>Show: {{ data }}</div>
 </template>
 
 <script setup>
-    const { data } = await useAsyncData(async (nuxtApp) => {
-      // fetch and return all "example" records...
-      const records = await nuxtApp.$pb.collection('example').getFullList();
+  const { data } = await useAsyncData(async (nuxtApp) => {
+    // fetch and return all "example" records...
+    const records = await nuxtApp.$pb.collection('example').getFullList();
 
-      return structuredClone(records);
-    })
+    return structuredClone(records);
+  })
 </script>
 ```
 
@@ -668,28 +676,28 @@ One way to integrate with Nuxt 2 SSR could be to create the PocketBase client in
 
 ```js
 // plugins/pocketbase.js
-import PocketBase from "pocketbase";
+import PocketBase from 'pocketbase';
 
 export default async (ctx, inject) => {
-    const pb = new PocketBase("http://127.0.0.1:8090");
+  const pb = new PocketBase('http://127.0.0.1:8090');
 
-    // load the store data from the request cookie string
-    pb.authStore.loadFromCookie(ctx.req?.headers?.cookie || "");
+  // load the store data from the request cookie string
+  pb.authStore.loadFromCookie(ctx.req?.headers?.cookie || '');
 
-    // send back the default 'pb_auth' cookie to the client with the latest store state
-    pb.authStore.onChange(() => {
-        ctx.res?.setHeader("set-cookie", pb.authStore.exportToCookie());
-    });
+  // send back the default 'pb_auth' cookie to the client with the latest store state
+  pb.authStore.onChange(() => {
+    ctx.res?.setHeader('set-cookie', pb.authStore.exportToCookie());
+  });
 
-    try {
-        // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
-        pb.authStore.isValid && (await pb.collection("users").authRefresh());
-    } catch (_) {
-        // clear the auth store on failed refresh
-        pb.authStore.clear();
-    }
+  try {
+    // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
+    pb.authStore.isValid && (await pb.collection('users').authRefresh());
+  } catch (_) {
+    // clear the auth store on failed refresh
+    pb.authStore.clear();
+  }
 
-    inject("pocketbase", pb);
+  inject('pocketbase', pb);
 };
 ```
 
@@ -697,18 +705,18 @@ And then in your component you could access it like this:
 
 ```html
 <template>
-    <div>Show: {{ items }}</div>
+  <div>Show: {{ items }}</div>
 </template>
 
 <script>
-    export default {
-        async asyncData({ $pocketbase }) {
-            // fetch and return all "example" records...
-            const items = await $pocketbase.collection("example").getFullList();
+  export default {
+    async asyncData({ $pocketbase }) {
+      // fetch and return all "example" records...
+      const items = await $pocketbase.collection('example').getFullList();
 
-            return { items };
-        },
-    };
+      return { items };
+    },
+  };
 </script>
 ```
 
@@ -724,46 +732,46 @@ but they are very limited and, at the time of writing, you can't pass data from 
 One way to integrate with Next.js SSR could be to create a custom `PocketBase` instance in each of your `getServerSideProps`:
 
 ```jsx
-import PocketBase from "pocketbase";
+import PocketBase from 'pocketbase';
 
 // you can place this helper in a separate file so that it can be reused
 async function initPocketBase(req, res) {
-    const pb = new PocketBase("http://127.0.0.1:8090");
+  const pb = new PocketBase('http://127.0.0.1:8090');
 
-    // load the store data from the request cookie string
-    pb.authStore.loadFromCookie(req?.headers?.cookie || "");
+  // load the store data from the request cookie string
+  pb.authStore.loadFromCookie(req?.headers?.cookie || '');
 
-    // send back the default 'pb_auth' cookie to the client with the latest store state
-    pb.authStore.onChange(() => {
-        res?.setHeader("set-cookie", pb.authStore.exportToCookie());
-    });
+  // send back the default 'pb_auth' cookie to the client with the latest store state
+  pb.authStore.onChange(() => {
+    res?.setHeader('set-cookie', pb.authStore.exportToCookie());
+  });
 
-    try {
-        // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
-        pb.authStore.isValid && (await pb.collection("users").authRefresh());
-    } catch (_) {
-        // clear the auth store on failed refresh
-        pb.authStore.clear();
-    }
+  try {
+    // get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
+    pb.authStore.isValid && (await pb.collection('users').authRefresh());
+  } catch (_) {
+    // clear the auth store on failed refresh
+    pb.authStore.clear();
+  }
 
-    return pb;
+  return pb;
 }
 
 export async function getServerSideProps({ req, res }) {
-    const pb = await initPocketBase(req, res);
+  const pb = await initPocketBase(req, res);
 
-    // fetch example records...
-    const result = await pb.collection("example").getList(1, 30);
+  // fetch example records...
+  const result = await pb.collection('example').getList(1, 30);
 
-    return {
-        props: {
-            // ...
-        },
-    };
+  return {
+    props: {
+      // ...
+    },
+  };
 }
 
 export default function Home() {
-    return <div>Hello world!</div>;
+  return <div>Hello world!</div>;
 }
 ```
 
@@ -778,8 +786,8 @@ Fortunately, modern browsers can detect and mitigate most of this type of attack
 
 This is out of the scope of the SDK, but you could find more resources about CSP at:
 
--   https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
--   https://content-security-policy.com
+- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+- https://content-security-policy.com
 
 **Depending on how and where you use the JS SDK, it is also recommended to use the helper `pb.filter(expr, params)` when constructing filter strings with untrusted user input to avoid eventual string injection attacks (see [Binding filter parameters](#binding-filter-parameters)).**
 
@@ -788,7 +796,7 @@ This is out of the scope of the SDK, but you could find more resources about CSP
 ### Creating new client instance
 
 ```js
-const pb = new PocketBase((baseUrl = "/"), (authStore = LocalAuthStore));
+const pb = new PocketBase((baseUrl = '/'), (authStore = LocalAuthStore));
 ```
 
 ### Instance methods
