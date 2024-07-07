@@ -1,9 +1,0 @@
-.*
-src
-tests
-*config*
-
-# generated markdown previews
-README.html
-CHANGELOG.html
-LICENSE.html
