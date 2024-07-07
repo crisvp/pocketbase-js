@@ -1,5 +1,7 @@
 # PocketBase JavaScript SDK
 
+**This project is under active development. It may not be fully stable yet.**
+
 This is a fork of the official JavaScript SDK (browser and node) for interacting with the [PocketBase API](https://pocketbase.io/docs).
 
 - [Differences from official SDK](#differences)
