@@ -103,7 +103,7 @@ export abstract class CrudService<M extends RecordModel> extends BaseService {
         status: 404,
         response: {
           code: 404,
-          message: "The requested resource wasn't found.",
+          message: "The requested resource was not found.",
           data: {},
         },
       });
